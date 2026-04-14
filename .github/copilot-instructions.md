@@ -97,6 +97,7 @@ Follow the phases in MASTER_PLAN.md strictly:
 - **Specs**: Intel i3-8100, 7.6GB RAM, no GPU, 25GB free disk
 - **OS**: Ubuntu 24.04, Docker 29.3.0
 - **Existing services**: PostgreSQL (5432, 5434), Redis (6380), Cloudflare tunnels
+- **LEDGIO AI Port**: **3004** (BossBoard demo ใช้ 3003, OpenClaw 3000, Centrix 3002)
 - **Budget**: App 512MB + Postgres 256MB + Redis 128MB ≈ 900MB total
 
 ## 🔗 Key Technical Decisions

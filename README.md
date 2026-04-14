@@ -103,6 +103,7 @@ npm run dev
 | OS | Ubuntu 24.04 LTS |
 | Docker | 29.3.0 + Compose 5.1.1 |
 | Existing | PostgreSQL (5432, 5434), Redis (6380), Cloudflare Tunnels ×4 |
+| **LEDGIO AI Port** | **3004** (BossBoard=3003, OpenClaw=3000, Centrix=3002) |
 
 ## 🔗 Origin Project
 

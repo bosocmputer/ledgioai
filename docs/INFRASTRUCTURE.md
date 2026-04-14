@@ -24,6 +24,10 @@
 | Redis | 6380 | Centrix |
 | Cloudflare Tunnels | — | 4 instances |
 | BossBoard (demo) | 3003 | Current demo |
+| OpenClaw Admin | 3000 | OpenClaw |
+| Centrix Web | 3002 | Centrix frontend |
+| Centrix API | 5001 | Centrix backend |
+| **LEDGIO AI** | **3004** | **This project** |
 
 ## 🐳 Docker Compose
 
@@ -39,7 +43,7 @@ services:
     container_name: ledgioai
     restart: unless-stopped
     ports:
-      - "3003:3000"
+      - "3004:3000"
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://ledgioai:${DB_PASSWORD}@db:5432/ledgioai
@@ -208,9 +212,9 @@ credentials-file: /etc/cloudflare/<tunnel-id>.json
 
 ingress:
   - hostname: ledgio.ai
-    service: http://localhost:3003
+    service: http://localhost:3004
   - hostname: api.ledgio.ai
-    service: http://localhost:3003
+    service: http://localhost:3004
   - service: http_status:404
 ```
 
