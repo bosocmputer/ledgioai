@@ -12,13 +12,8 @@ services:
     env_file: .env
     environment:
       - NODE_ENV=production
-      - DATABASE_URL=postgresql://ledgioai:${DB_PASSWORD}@db:5432/ledgioai
-      - REDIS_URL=redis://redis:6379
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
       interval: 30s
@@ -35,56 +30,3 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    networks:
-      - ledgioai
-
-  db:
-    image: postgres:16-alpine
-    container_name: ledgioai-db
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=ledgioai
-      - POSTGRES_USER=ledgioai
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ledgioai"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-          cpus: "1.0"
-    networks:
-      - ledgioai
-
-  redis:
-    image: redis:7-alpine
-    container_name: ledgioai-redis
-    restart: unless-stopped
-    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
-    volumes:
-      - redisdata:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-          cpus: "0.5"
-    networks:
-      - ledgioai
-
-volumes:
-  pgdata:
-  redisdata:
-
-networks:
-  ledgioai:
-    driver: bridge
