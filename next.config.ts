@@ -1,4 +1,5 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
+import { withSentryConfig } from "@sentry/nextjs"
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -13,17 +14,30 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self'",
-      "connect-src 'self' https://api.anthropic.com https://openrouter.ai https://api.openai.com https://generativelanguage.googleapis.com https://google.serper.dev https://serpapi.com https://api.supermemory.ai",
+      "connect-src 'self' https://api.anthropic.com https://openrouter.ai https://api.openai.com https://generativelanguage.googleapis.com https://google.serper.dev https://serpapi.com https://api.supermemory.ai https://*.sentry.io",
     ].join("; "),
   },
   { key: "Permissions-Policy", value: "camera=(), microphone=(self), geolocation=()" },
-];
+]
 
 const nextConfig: NextConfig = {
   output: "standalone",
   async headers() {
-    return [{ source: "/(.*)", headers: securityHeaders }];
+    return [{ source: "/(.*)", headers: securityHeaders }]
   },
-};
+}
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  // ไม่ print build output
+  silent: !process.env.CI,
+  // Upload source maps เฉพาะตอน build จริง
+  widenClientFileUpload: true,
+  // ซ่อน source maps จาก browser
+  hideSourceMaps: true,
+  // ไม่ใช้ Sentry logger (ใช้ Pino แทน)
+  disableLogger: true,
+  // ปิด telemetry ของ Sentry CLI
+  telemetry: false,
+})

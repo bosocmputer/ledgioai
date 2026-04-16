@@ -9,6 +9,8 @@ import { logger } from "@/lib/logger"
 import { startMeetingSchema, parseBody } from "@/lib/validations"
 import { rateLimitByUser } from "@/lib/rate-limit"
 import { logAudit } from "@/lib/db/queries/audit"
+import { getWorkspaceSettings } from "@/lib/db/queries/settings"
+import { getTodayUsageByWorkspace } from "@/lib/db/queries/stats"
 import type { FileContext } from "@/lib/meeting/context"
 import type { ClarificationAnswer } from "@/lib/meeting/modes/full-board"
 
@@ -20,6 +22,20 @@ export async function POST(request: NextRequest) {
   const rl = await rateLimitByUser(ctx.userId, "meeting")
   if (!rl.allowed) {
     return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 })
+  }
+
+  // ── Quota Check ──────────────────────────────────────
+  const [settings, todayUsage] = await Promise.all([
+    getWorkspaceSettings(ctx.workspaceId),
+    getTodayUsageByWorkspace(ctx.workspaceId),
+  ])
+
+  const maxMeetingsPerDay = settings?.maxMeetingsPerDay ?? 100
+  if (todayUsage.totalMeetings >= maxMeetingsPerDay) {
+    return NextResponse.json(
+      { error: `เกินจำนวน meeting สูงสุดวันนี้ (${maxMeetingsPerDay} meetings/วัน)` },
+      { status: 429 },
+    )
   }
 
   // Parse multipart/form-data or JSON
@@ -130,6 +146,7 @@ export async function POST(request: NextRequest) {
         teamId,
         fileContexts,
         clarificationAnswers,
+        maxTokensPerMeeting: settings?.maxTokensPerMeeting ?? 50_000,
       },
       send,
     )

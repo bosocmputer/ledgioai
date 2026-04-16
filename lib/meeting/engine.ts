@@ -3,6 +3,7 @@
  * Routes to correct mode, handles DB persistence, stats, memory extraction
  */
 
+import * as Sentry from "@sentry/nextjs"
 import type { agents } from "@/lib/db/schema"
 import type { SSESender } from "./sse"
 import type { FileContext } from "./context"
@@ -49,6 +50,7 @@ export interface MeetingConfig {
   teamId?: string
   fileContexts?: FileContext[]
   clarificationAnswers?: ClarificationAnswer[]
+  maxTokensPerMeeting?: number
 }
 
 /**
@@ -67,6 +69,7 @@ export async function runMeeting(
     teamId,
     fileContexts = [],
     clarificationAnswers,
+    maxTokensPerMeeting = 50_000,
   } = config
 
   // Create meeting record
@@ -207,6 +210,20 @@ export async function runMeeting(
       }
     }
 
+    // ── Token Quota Check ──────────────────────────────
+    if (totalTokens > maxTokensPerMeeting) {
+      send("error", {
+        code: "QUOTA_EXCEEDED",
+        message: `ใช้ token เกินกำหนด (${totalTokens.toLocaleString()}/${maxTokensPerMeeting.toLocaleString()} tokens)`,
+      })
+      await updateMeeting(meeting.id, workspaceId, {
+        status: "error",
+        totalTokens,
+        metadata: JSON.stringify({ error: "TOKEN_QUOTA_EXCEEDED", totalTokens, maxTokensPerMeeting }),
+      })
+      return
+    }
+
     // Mark meeting as completed
     await updateMeeting(meeting.id, workspaceId, {
       status: "completed",
@@ -217,6 +234,16 @@ export async function runMeeting(
 
     send("done", { meetingId: meeting.id, totalTokens })
   } catch (err) {
+    // Report to Sentry with meeting context
+    Sentry.captureException(err, {
+      tags: { mode, workspaceId },
+      extra: {
+        meetingId: meeting.id,
+        agentCount: agentRows.length,
+        teamId,
+      },
+    })
+
     // Mark meeting as error
     await updateMeeting(meeting.id, workspaceId, {
       status: "error",

@@ -19,6 +19,7 @@
     "@mastra/core": "^0.24.9",
     "@mastra/libsql": "^0.16.4",
     "@mastra/memory": "^0.15.13",
+    "@sentry/nextjs": "^10.48.0",
     "bcryptjs": "^3.0.3",
     "better-auth": "^1.6.3",
     "clsx": "^2.1.1",

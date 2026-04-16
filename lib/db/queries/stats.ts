@@ -59,6 +59,30 @@ export async function getRecentMeetings(workspaceId: string, limit = 5) {
     .limit(limit)
 }
 
+// ── Today's Usage per Workspace ───────────────────────
+
+export async function getTodayUsageByWorkspace(workspaceId: string): Promise<{
+  totalTokens: number
+  totalMeetings: number
+}> {
+  const today = new Date().toISOString().slice(0, 10)
+
+  const [row] = await db
+    .select({
+      totalTokens: sql<number>`coalesce(sum(${agentStats.inputTokens} + ${agentStats.outputTokens}), 0)::int`,
+      totalMeetings: sql<number>`coalesce(sum(${agentStats.meetings}), 0)::int`,
+    })
+    .from(agentStats)
+    .where(
+      and(
+        eq(agentStats.workspaceId, workspaceId),
+        eq(agentStats.date, today),
+      ),
+    )
+
+  return row ?? { totalTokens: 0, totalMeetings: 0 }
+}
+
 // ── Token Usage (last 7 days) ──────────────────────────
 
 export async function getTokenUsage7Days(workspaceId: string) {
