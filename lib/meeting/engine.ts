@@ -24,6 +24,22 @@ type AgentRow = typeof agents.$inferSelect
 
 export type MeetingMode = "quick_ask" | "consult" | "full_board"
 
+// Timeout per mode (ms) — from MASTER_PLAN Critical Rules
+const MODE_TIMEOUTS: Record<MeetingMode, number> = {
+  quick_ask: 30_000,
+  consult:   90_000,
+  full_board: 300_000,
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Meeting timeout: ${label} exceeded ${ms / 1000}s`)), ms),
+    ),
+  ])
+}
+
 export interface MeetingConfig {
   workspaceId: string
   userId: string
@@ -74,9 +90,14 @@ export async function runMeeting(
     let finalAnswer: string | undefined
 
     // ── Route to mode ─────────────────────────────
+    const timeout = MODE_TIMEOUTS[mode]
     switch (mode) {
       case "quick_ask": {
-        const result = await runQuickAsk(agentRows[0], question, context, send)
+        const result = await withTimeout(
+          runQuickAsk(agentRows[0], question, context, send),
+          timeout,
+          "quick_ask",
+        )
         totalTokens = result.tokensUsed
         finalAnswer = result.content
 
@@ -93,13 +114,18 @@ export async function runMeeting(
         })
 
         // Update agent stats
-        await updateAgentStats(agentRows[0].id, workspaceId, 0, result.tokensUsed)
+        await updateAgentStats(agentRows[0].id, workspaceId, result.inputTokens, result.outputTokens)
         break
       }
 
       case "consult": {
-        const result = await runConsult(agentRows, question, context, send)
+        const result = await withTimeout(
+          runConsult(agentRows, question, context, send),
+          timeout,
+          "consult",
+        )
         totalTokens = result.totalTokens
+        finalAnswer = result.finalAnswer
 
         // Save messages
         for (const analysis of result.analyses) {
@@ -115,7 +141,7 @@ export async function runMeeting(
             content: analysis.content,
             tokensUsed: analysis.tokensUsed,
           })
-          await updateAgentStats(agentRow.id, workspaceId, 0, analysis.tokensUsed)
+          await updateAgentStats(agentRow.id, workspaceId, analysis.inputTokens, analysis.outputTokens)
         }
         for (const disc of result.discussions) {
           const agentRow = agentRows.find((a) => a.id === disc.agentId)
@@ -130,18 +156,31 @@ export async function runMeeting(
             content: disc.content,
             tokensUsed: disc.tokensUsed,
           })
-          await updateAgentStats(agentRow.id, workspaceId, 0, disc.tokensUsed)
+          await updateAgentStats(agentRow.id, workspaceId, disc.inputTokens, disc.outputTokens)
+        }
+
+        // Save synthesis (chairman summary)
+        if (result.finalAnswer) {
+          const chairman = detectChairman(agentRows)
+          await createMeetingMessage({
+            meetingId: meeting.id,
+            workspaceId,
+            agentId: chairman.id,
+            agentName: chairman.name,
+            agentEmoji: chairman.emoji,
+            phase: "synthesis",
+            content: result.finalAnswer,
+            tokensUsed: 0,
+          })
         }
         break
       }
 
       case "full_board": {
-        const result = await runFullBoard(
-          agentRows,
-          question,
-          context,
-          clarificationAnswers ?? null,
-          send,
+        const result = await withTimeout(
+          runFullBoard(agentRows, question, context, clarificationAnswers ?? null, send),
+          timeout,
+          "full_board",
         )
         totalTokens = result.totalTokens
         finalAnswer = result.finalAnswer

@@ -80,7 +80,7 @@ export const startMeetingSchema = z.object({
   agentIds:       z.array(z.string().uuid()).default([]),
   teamId:         z.string().uuid().optional(),
   clarificationAnswers: z.array(z.object({
-    questionId:   z.string(),
+    question:     z.string(),
     answer:       z.string(),
   })).optional(),
 })

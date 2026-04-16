@@ -11,6 +11,8 @@ import {
   buildSystemPrompt,
   buildAnalysisPrompt,
   buildDiscussionPrompt,
+  buildSynthesisPrompt,
+  detectChairman,
 } from "../prompts"
 
 type AgentRow = typeof agents.$inferSelect
@@ -22,8 +24,9 @@ interface AgentAnalysis {
 }
 
 export interface ConsultResult {
-  analyses: Array<{ agentId: string; content: string; tokensUsed: number }>
-  discussions: Array<{ agentId: string; content: string; tokensUsed: number }>
+  analyses: Array<{ agentId: string; content: string; tokensUsed: number; inputTokens: number; outputTokens: number }>
+  discussions: Array<{ agentId: string; content: string; tokensUsed: number; inputTokens: number; outputTokens: number }>
+  finalAnswer: string
   totalTokens: number
 }
 
@@ -52,7 +55,9 @@ export async function runConsult(
       const userMessage = buildAnalysisPrompt(question)
       const result = await mastraAgent.generate([{ role: "user", content: userMessage }])
 
-      const tokensUsed = result.usage?.totalTokens ?? 0
+      const inputTokens = result.usage?.promptTokens ?? 0
+      const outputTokens = result.usage?.completionTokens ?? 0
+      const tokensUsed = result.usage?.totalTokens ?? (inputTokens + outputTokens)
       totalTokens += tokensUsed
 
       send("message", {
@@ -63,7 +68,7 @@ export async function runConsult(
       })
       send("agent_done", { agentId: agentRow.id, tokensUsed })
 
-      return { agent: agentRow, content: result.text, tokensUsed }
+      return { agent: agentRow, content: result.text, tokensUsed, inputTokens, outputTokens }
     }),
   )
 
@@ -92,7 +97,9 @@ export async function runConsult(
     const userMessage = buildDiscussionPrompt(question, analysis.content, othersContext, agentRow)
     const result = await mastraAgent.generate([{ role: "user", content: userMessage }])
 
-    const tokensUsed = result.usage?.totalTokens ?? 0
+    const inputTokens = result.usage?.promptTokens ?? 0
+    const outputTokens = result.usage?.completionTokens ?? 0
+    const tokensUsed = result.usage?.totalTokens ?? (inputTokens + outputTokens)
     totalTokens += tokensUsed
 
     send("message", {
@@ -103,16 +110,64 @@ export async function runConsult(
     })
     send("agent_done", { agentId: agentRow.id, tokensUsed })
 
-    discussions.push({ agentId: agentRow.id, content: result.text, tokensUsed })
+    discussions.push({ agentId: agentRow.id, content: result.text, tokensUsed, inputTokens, outputTokens })
   }
+
+  // ── Phase 3: Synthesis (senior-most agent summarises consensus) ─
+  send("status", { message: "กำลังสรุปมติ..." })
+
+  const chairman = detectChairman(agentRows)
+  const chairmanPrompt = buildSystemPrompt(chairman, context)
+  const chairmanAgent = createMastraAgent(chairman, chairmanPrompt)
+
+  const allDiscussions = [
+    ...analyses.map((a) => `[วิเคราะห์] ${a.agent.emoji} ${a.agent.name}:\n${a.content}`),
+    ...discussions.map((d) => {
+      const agentRow = agentRows.find((r) => r.id === d.agentId)
+      return `[ถกเถียง] ${agentRow?.emoji ?? ""} ${agentRow?.name ?? d.agentId}:\n${d.content}`
+    }),
+  ].join("\n\n---\n\n")
+
+  send("agent_start", {
+    agentId: chairman.id,
+    name: chairman.name,
+    emoji: chairman.emoji,
+  })
+
+  const synthesisStream = await chairmanAgent.stream([
+    { role: "user", content: buildSynthesisPrompt(question, allDiscussions, "") },
+  ])
+
+  let finalAnswer = ""
+  for await (const chunk of synthesisStream.textStream) {
+    finalAnswer += chunk
+    send("chunk", { agentId: chairman.id, content: chunk })
+  }
+
+  const synthesisOutput = await synthesisStream.getFullOutput()
+  const synthInput = synthesisOutput.usage?.promptTokens ?? 0
+  const synthOutput = synthesisOutput.usage?.completionTokens ?? 0
+  const synthTokens = synthesisOutput.usage?.totalTokens ?? (synthInput + synthOutput)
+  totalTokens += synthTokens
+
+  send("message", {
+    agentId: chairman.id,
+    phase: "synthesis",
+    content: finalAnswer,
+    tokensUsed: synthTokens,
+  })
+  send("agent_done", { agentId: chairman.id, tokensUsed: synthTokens })
 
   return {
     analyses: analyses.map((a) => ({
       agentId: a.agent.id,
       content: a.content,
       tokensUsed: a.tokensUsed,
+      inputTokens: a.inputTokens,
+      outputTokens: a.outputTokens,
     })),
     discussions,
+    finalAnswer,
     totalTokens,
   }
 }

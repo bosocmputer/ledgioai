@@ -14,6 +14,8 @@ type AgentRow = typeof agents.$inferSelect
 export interface QuickAskResult {
   content: string
   tokensUsed: number
+  inputTokens: number
+  outputTokens: number
 }
 
 export async function runQuickAsk(
@@ -43,7 +45,9 @@ export async function runQuickAsk(
 
   // Get full output for token usage
   const output = await result.getFullOutput()
-  const tokensUsed = output.usage?.totalTokens ?? 0
+  const inputTokens = output.usage?.promptTokens ?? 0
+  const outputTokens = output.usage?.completionTokens ?? 0
+  const tokensUsed = output.usage?.totalTokens ?? (inputTokens + outputTokens)
 
   send("message", {
     agentId: agentRow.id,
@@ -54,5 +58,5 @@ export async function runQuickAsk(
 
   send("agent_done", { agentId: agentRow.id, tokensUsed })
 
-  return { content: fullContent, tokensUsed }
+  return { content: fullContent, tokensUsed, inputTokens, outputTokens }
 }
