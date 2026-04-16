@@ -3,10 +3,16 @@ import type { NextRequest } from "next/server"
 
 const PUBLIC_PATHS = ["/login", "/register", "/api/auth"]
 
+// Static assets that must bypass auth
+const STATIC_EXTENSIONS = /\.(json|png|jpg|jpeg|svg|ico|webp|js|css|woff2?|ttf|eot|map|txt|xml|webmanifest)$/
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p))
   if (isPublic) return NextResponse.next()
+
+  // Static assets always public (manifest.json, sw.js, icons, etc.)
+  if (STATIC_EXTENSIONS.test(pathname)) return NextResponse.next()
 
   // Health check always public
   if (pathname === "/api/health") return NextResponse.next()

@@ -18,8 +18,12 @@ export default function InsightDashboardPage() {
 
   useEffect(() => {
     fetch("/api/stats/insights")
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
       .then((json) => setData(json.data))
+      .catch(() => setData(null))
       .finally(() => setLoading(false))
   }, [])
 

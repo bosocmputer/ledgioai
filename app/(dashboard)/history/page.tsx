@@ -56,6 +56,11 @@ export default function HistoryPage() {
       if (search.trim()) params.set("search", search.trim())
       const qs = params.toString()
       const res = await fetch(`/api/meetings${qs ? `?${qs}` : ""}`)
+      if (!res.ok) {
+        setMeetings([])
+        setStats({ total: 0, totalTokens: 0 })
+        return
+      }
       const json = await res.json()
       setMeetings(json.data ?? [])
       setStats(json.stats ?? { total: 0, totalTokens: 0 })

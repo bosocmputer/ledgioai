@@ -1,74 +1,120 @@
 import { requireAuth } from "@/lib/auth/helpers"
 import { db } from "@/lib/db"
 import { meetings, agents } from "@/lib/db/schema"
-import { eq, and, sql, gte, desc } from "drizzle-orm"
+import { eq, and, sql, gte, desc, isNull } from "drizzle-orm"
 
 export async function GET(request: Request) {
-  const ctx = await requireAuth(request)
-  if (ctx instanceof Response) return ctx
-  const workspaceId = ctx.workspaceId
+  try {
+    const ctx = await requireAuth(request)
+    if (ctx instanceof Response) return ctx
+    const workspaceId = ctx.workspaceId
 
-  const thirtyDaysAgo = new Date()
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-  // Parallel queries for insights
-  const [
-    meetingsByDay,
-    meetingsByMode,
-    avgRating,
-    tokensByDay,
-    topQuestions,
-    agentCount,
-  ] = await Promise.all([
-    // Meetings per day (last 30 days)
-    db.execute(sql`
-      SELECT DATE(started_at) as day, COUNT(*)::int as count
-      FROM meetings
-      WHERE workspace_id = ${workspaceId} AND started_at >= ${thirtyDaysAgo}
-      GROUP BY DATE(started_at) ORDER BY day
-    `),
-    // By mode
-    db.execute(sql`
-      SELECT mode, COUNT(*)::int as count
-      FROM meetings
-      WHERE workspace_id = ${workspaceId} AND started_at >= ${thirtyDaysAgo}
-      GROUP BY mode ORDER BY count DESC
-    `),
-    // Average rating
-    db.execute(sql`
-      SELECT AVG(rating)::float as avg_rating, COUNT(rating)::int as rated_count
-      FROM meetings
-      WHERE workspace_id = ${workspaceId} AND rating IS NOT NULL
-    `),
-    // Tokens per day (last 30 days)
-    db.execute(sql`
-      SELECT DATE(started_at) as day, SUM(total_tokens)::int as tokens
-      FROM meetings
-      WHERE workspace_id = ${workspaceId} AND started_at >= ${thirtyDaysAgo}
-      GROUP BY DATE(started_at) ORDER BY day
-    `),
-    // Most asked questions (top 10 recent)
-    db
-      .select({ question: meetings.question, mode: meetings.mode })
-      .from(meetings)
-      .where(and(eq(meetings.workspaceId, workspaceId), gte(meetings.startedAt, thirtyDaysAgo)))
-      .orderBy(desc(meetings.startedAt))
-      .limit(10),
-    // Total active agents
-    db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(agents)
-      .where(and(eq(agents.workspaceId, workspaceId), sql`deleted_at IS NULL`)),
-  ])
+    // Run queries sequentially to isolate any failing one
+    let meetingsByDay: unknown[] = []
+    let meetingsByMode: unknown[] = []
+    let avgRating: unknown[] = []
+    let tokensByDay: unknown[] = []
+    let topQuestions: unknown[] = []
+    let agentCount: unknown[] = []
 
-  return Response.json({
-    data: {
-      meetingsByDay: meetingsByDay,
-      meetingsByMode: meetingsByMode,
-      avgRating: avgRating[0] ?? { avg_rating: null, rated_count: 0 },
-      tokensByDay: tokensByDay,
-      topQuestions,
-      agentCount: agentCount[0]?.count ?? 0,
-    },
-  })
+    try {
+      meetingsByDay = await db
+        .select({
+          day: sql<string>`DATE(${meetings.startedAt})`,
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(meetings)
+        .where(and(eq(meetings.workspaceId, workspaceId), gte(meetings.startedAt, thirtyDaysAgo)))
+        .groupBy(sql`DATE(${meetings.startedAt})`)
+        .orderBy(sql`DATE(${meetings.startedAt})`)
+    } catch (e) {
+      console.error("meetingsByDay error:", e)
+    }
+
+    try {
+      meetingsByMode = await db
+        .select({
+          mode: meetings.mode,
+          count: sql<number>`COUNT(*)::int`,
+        })
+        .from(meetings)
+        .where(and(eq(meetings.workspaceId, workspaceId), gte(meetings.startedAt, thirtyDaysAgo)))
+        .groupBy(meetings.mode)
+        .orderBy(sql`COUNT(*) DESC`)
+    } catch (e) {
+      console.error("meetingsByMode error:", e)
+    }
+
+    try {
+      avgRating = await db
+        .select({
+          avg_rating: sql<number | null>`AVG(${meetings.rating})::float`,
+          rated_count: sql<number>`COUNT(${meetings.rating})::int`,
+        })
+        .from(meetings)
+        .where(and(eq(meetings.workspaceId, workspaceId), sql`${meetings.rating} IS NOT NULL`))
+    } catch (e) {
+      console.error("avgRating error:", e)
+    }
+
+    try {
+      tokensByDay = await db
+        .select({
+          day: sql<string>`DATE(${meetings.startedAt})`,
+          tokens: sql<number>`COALESCE(SUM(${meetings.totalTokens}), 0)::int`,
+        })
+        .from(meetings)
+        .where(and(eq(meetings.workspaceId, workspaceId), gte(meetings.startedAt, thirtyDaysAgo)))
+        .groupBy(sql`DATE(${meetings.startedAt})`)
+        .orderBy(sql`DATE(${meetings.startedAt})`)
+    } catch (e) {
+      console.error("tokensByDay error:", e)
+    }
+
+    try {
+      topQuestions = await db
+        .select({ question: meetings.question, mode: meetings.mode })
+        .from(meetings)
+        .where(and(eq(meetings.workspaceId, workspaceId), gte(meetings.startedAt, thirtyDaysAgo)))
+        .orderBy(desc(meetings.startedAt))
+        .limit(10)
+    } catch (e) {
+      console.error("topQuestions error:", e)
+    }
+
+    try {
+      agentCount = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(agents)
+        .where(and(eq(agents.workspaceId, workspaceId), isNull(agents.deletedAt)))
+    } catch (e) {
+      console.error("agentCount error:", e)
+    }
+
+    return Response.json({
+      data: {
+        meetingsByDay,
+        meetingsByMode,
+        avgRating: (avgRating as Array<{ avg_rating: number | null; rated_count: number }>)[0] ?? { avg_rating: null, rated_count: 0 },
+        tokensByDay,
+        topQuestions,
+        agentCount: (agentCount as Array<{ count: number }>)[0]?.count ?? 0,
+      },
+    })
+  } catch (error) {
+    console.error("[GET /api/stats/insights] Error:", error)
+    return Response.json({
+      data: {
+        meetingsByDay: [],
+        meetingsByMode: [],
+        avgRating: { avg_rating: null, rated_count: 0 },
+        tokensByDay: [],
+        topQuestions: [],
+        agentCount: 0,
+      },
+    })
+  }
 }
