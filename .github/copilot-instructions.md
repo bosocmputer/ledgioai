@@ -1,126 +1,272 @@
 # LEDGIO AI — Copilot Instructions
 
-> Context file for Claude Opus 4.6 in VS Code. Read this FIRST before any implementation.
+> Quick reference สำหรับ AI coding assistant. อ่านไฟล์นี้ก่อนทุกครั้ง แล้วอ่าน docs/ ตามลำดับ
 
-## What Is This Project?
+---
 
-**LEDGIO AI** is a multi-tenant SaaS rebuild of the BossBoard demo — an AI "board meeting room" where specialized AI agents (Thai accounting, tax, labor law, business analysis experts) hold structured meetings to give advisory answers to SME business owners.
+## What Is This?
 
-**Target users**: Thai businesses (multiple companies per user, e.g., bookkeeping firms managing many clients).
+**LEDGIO AI** = แพลตฟอร์มสร้าง AI Expert Team — ผู้ใช้สร้าง "ผู้เชี่ยวชาญ AI" หลายด้าน แล้วให้พวกเขา **ประชุม ถกเถียง หาคำตอบร่วมกัน** เหมือนจ้างทีมที่ปรึกษาจริงๆ แต่ราคาถูกกว่ามาก
 
-**Language**: UI in Thai, code in English.
+**Core Product Loop:**
+```
+สร้าง Agent (ผู้เชี่ยวชาญ) → จัดทีม → ถามคำถาม → ดูการถกเถียง → ได้คำตอบ
+```
 
-## 📖 Read Order
+**3 Meeting Modes:**
+- ⚡ **Quick Ask** — 1 agent ตอบทันที (< 10 วิ)
+- 🤝 **Consult** — 2-3 agents ถกเถียงกัน (30-60 วิ)
+- 🏛️ **Full Board** — ทีมเต็ม 5-phase meeting (2-5 นาที)
 
-Read these documents in order before starting:
+**Target Users:** สำนักงานบัญชีไทย, SME, CFO, Freelance นักบัญชี
 
-1. **`docs/MASTER_PLAN.md`** — Phases, timeline, tech stack
-2. **`docs/DATABASE_SCHEMA.md`** — All 15 tables with Drizzle schema code
-3. **`docs/AUTH_SYSTEM.md`** — NextAuth v5 + RBAC
-4. **`docs/MULTI_TENANT.md`** — Company switching, data isolation
-5. **`docs/PROJECT_STRUCTURE.md`** — File structure, conventions, dependencies
-6. **`docs/AI_INTEGRATION.md`** — LLM providers, meeting engine, web search, document parsing
-7. **`docs/API_SPEC.md`** — Every endpoint specification
-8. **`docs/INFRASTRUCTURE.md`** — Docker, deploy, monitoring
-9. **`docs/MIGRATION.md`** — BossBoard data migration (do last)
+---
 
-## 🔨 Implementation Order
+## Read Order (docs/)
 
-Follow the phases in MASTER_PLAN.md strictly:
+1. `docs/MASTER_PLAN.md` — Vision, phases, tech stack decisions
+2. `docs/DATABASE_SCHEMA.md` — Schema ทุกตาราง (Drizzle)
+3. `docs/AUTH_SYSTEM.md` — Better Auth + RBAC
+4. `docs/MULTI_TENANT.md` — Workspace isolation
+5. `docs/AI_INTEGRATION.md` — Mastra engine, 3 modes, prompts
+6. `docs/PROJECT_STRUCTURE.md` — File structure, conventions
+7. `docs/API_SPEC.md` — Endpoint spec ทุกตัว
+8. `docs/INFRASTRUCTURE.md` — Docker, deploy, monitoring
+9. `docs/MIGRATION.md` — BossBoard → PostgreSQL (ทำสุดท้าย)
 
-### Phase 1: Foundation (Week 1-2)
-1. `npm create next-app@latest . --typescript --tailwind --app --src=no`
-2. Install dependencies per PROJECT_STRUCTURE.md
-3. Set up `lib/db/index.ts` (Drizzle + postgres.js)
-4. Create ALL schema files in `lib/db/schema/` per DATABASE_SCHEMA.md
-5. Run `npx drizzle-kit generate` + `npx drizzle-kit migrate`
-6. Create `auth.ts`, `middleware.ts` per AUTH_SYSTEM.md
-7. Create `.env.example` and `.env.local`
+---
 
-### Phase 2: Auth (Week 2)
-8. Login/register pages in `app/(auth)/`
-9. Registration API with transaction (user + company + owner role)
-10. Auth middleware protecting `(dashboard)` routes
+## Tech Stack (ที่ตัดสินใจแล้ว — ห้ามเปลี่ยน)
 
-### Phase 3: Multi-Tenant (Week 3)
-11. Company CRUD APIs
-12. Company switcher component
-13. `CompanyProvider` context
-14. Verify ALL business queries filter by companyId
+| Layer | Choice | หมายเหตุ |
+|-------|--------|---------|
+| Framework | Next.js 15 App Router | SSR + API routes |
+| Auth | **Better Auth** | organizations + RBAC plugins built-in |
+| AI Engine | **Mastra AI** | AgentNetwork + Memory + MCP |
+| Database | PostgreSQL + Drizzle ORM | Type-safe queries |
+| Cache | Redis (ioredis) | Rate limit + session |
+| Validation | Zod | ทุก API input |
+| Styling | Tailwind CSS 4 | |
+| Logging | Pino | Structured |
+| Encryption | AES-256-GCM (Node crypto) | API keys in DB |
+| Deploy | Docker + GitHub Actions | On-premise port 3004 |
 
-### Phase 4: Core Business Logic (Week 4-6)
-15. Agent CRUD (forms, API, knowledge upload)
-16. Team CRUD (forms, API)
-17. `lib/llm/call-llm.ts` — multi-provider LLM caller
-18. Meeting engine in `lib/meeting/` (all 5 phases)
-19. SSE streaming endpoint `api/meetings/stream`
-20. Meeting room UI
+---
 
-### Phase 5+: Enhancement
-21. Agent statistics, memory system, web search, MCP integration
-22. Settings, billing preparation
-23. Docker deployment
+## Key Terminology (ใช้ให้สม่ำเสมอในทุก file)
 
-## ⚠️ Critical Rules
+| Term | ความหมาย | ห้ามใช้คำว่า |
+|------|----------|------------|
+| **Workspace** | พื้นที่ทำงาน (multi-tenant unit) | ~~Company~~ |
+| **Agent** | ผู้เชี่ยวชาญ AI คนหนึ่ง | ~~Bot, Assistant~~ |
+| **Team** | กลุ่ม agents | ~~Group~~ |
+| **Meeting** | session การประชุม | ~~Research, Session~~ (ใน UI) |
+| **Memory** | ข้อมูลที่จำข้ามเซสชัน | ~~Cache~~ |
+| **Soul** | System prompt ของ agent | ~~Persona, Prompt~~ |
 
-### Security
-- **ALWAYS** filter by `companyId` on every business query
-- **NEVER** expose raw database errors to clients
-- **NEVER** store API keys in code — use environment variables
-- API keys in DB are encrypted with AES-256-GCM (see `lib/encryption.ts`)
-- Hash passwords with bcryptjs (cost 12)
-- Rate limit: 10 req/min for auth, 30/min for mutations, 200/min for reads
+---
 
-### Architecture
-- Server Components by default, `"use client"` only when needed
-- All database access through `lib/db/queries/*.ts`
-- No direct SQL in route handlers
-- Use Zod for ALL input validation in API routes
-- Transactions for multi-table writes
-- Next.js `output: "standalone"` for Docker
+## Critical Rules
 
-### Meeting Engine
-- The 5 phases are: Clarification → Analysis → Findings → Discussion → Synthesis
-- Chairman = highest seniority in the team, speaks first/last
-- Each agent has a unique `voice` (speaking style)
-- Anti-hallucination: agents must cite sources or say "ไม่แน่ใจ"
-- SSE events: `phase`, `agent-start`, `agent-message`, `agent-done`, `sources`, `error`, `complete`
+### Multi-Tenant Safety
+```typescript
+// ✅ ถูก — ทุก business query ต้อง filter workspaceId
+const agents = await db.query.agents.findMany({
+  where: and(eq(agents.workspaceId, workspaceId), isNull(agents.deletedAt))
+})
 
-### Multi-Tenant
-- `companyId` column on: agents, teams, research_sessions, memory_facts, agent_stats, company_settings
-- Use cookie `active-company-id` for company switching
-- Junction table `user_companies` has `role` enum: owner, admin, member, viewer
+// ❌ ผิด — ไม่มี workspaceId filter = data leak ข้าม tenant
+const agents = await db.query.agents.findMany()
+```
 
-## 🖥️ Production Server
+### Database Access
+```typescript
+// ✅ ถูก — ผ่าน queries layer เสมอ
+import { getAgentsByWorkspace } from "@/lib/db/queries/agents"
 
-- **IP**: 192.168.2.109 (ssh bosscatdog)
-- **Specs**: Intel i3-8100, 7.6GB RAM, no GPU, 25GB free disk
+// ❌ ผิด — ห้าม query ตรงใน route handler
+import { db } from "@/lib/db"
+```
+
+### API Key Encryption
+```typescript
+// ✅ ถูก — encrypt ก่อน store ทุกครั้ง
+const encrypted = encrypt(apiKey)
+await db.insert(agents).values({ ...data, apiKeyEncrypted: encrypted })
+
+// ❌ ผิด — ห้าม store plaintext key
+await db.insert(agents).values({ ...data, apiKey: apiKey })
+```
+
+### Soft Delete
+```typescript
+// ✅ ถูก
+await db.update(agents).set({ deletedAt: new Date() }).where(eq(agents.id, id))
+
+// ❌ ผิด — ห้าม hard delete
+await db.delete(agents).where(eq(agents.id, id))
+```
+
+### React Components
+```typescript
+// ✅ Server Component by default
+export default async function AgentsPage() { ... }
+
+// "use client" เฉพาะเมื่อ: useState, useEffect, event handlers, browser APIs
+"use client"
+export function AgentForm() { ... }
+```
+
+---
+
+## Mastra Meeting Engine — Pattern
+
+```typescript
+// lib/meeting/engine.ts — ไม่ใช่ manual loop อีกต่อไป
+import { Mastra, Agent } from "@mastra/core"
+
+// Quick Ask: 1 agent
+export async function quickAsk(agentId: string, question: string, send: SSESender) {
+  const agent = await loadAgent(agentId)
+  const mastraAgent = new Agent({ ... })
+  const stream = await mastraAgent.stream(question)
+  for await (const chunk of stream) { send("message", chunk) }
+}
+
+// Consult: 2-3 agents, ถกเถียงกัน
+export async function consult(agentIds: string[], question: string, send: SSESender) {
+  const network = new AgentNetwork({ agents: [...] })
+  await network.run(question, { onStream: send })
+}
+
+// Full Board: 5-phase orchestration
+export async function fullBoard(teamId: string, question: string, send: SSESender) {
+  // Phase 0: Clarification (Chairman)
+  // Phase 1: Parallel Analysis (all agents)
+  // Phase 2: Findings (ordered by seniority)
+  // Phase 3: Discussion (agents read each other's findings)
+  // Phase 4: Synthesis (Chairman summary + memory extract)
+}
+```
+
+---
+
+## Better Auth — Pattern
+
+```typescript
+// auth.ts (root)
+import { betterAuth } from "better-auth"
+import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { organization, rbac } from "better-auth/plugins"
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, { provider: "pg" }),
+  plugins: [
+    organization({
+      // Workspace = Organization in Better Auth
+      roles: ["owner", "admin", "member", "viewer"],
+    }),
+    rbac(),
+  ],
+})
+
+// ใช้ใน API route
+const session = await auth.api.getSession({ headers: request.headers })
+if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 })
+const workspaceId = session.session.activeOrganizationId
+```
+
+---
+
+## SSE Streaming — Pattern
+
+```typescript
+// app/api/meetings/stream/route.ts
+export async function POST(request: Request) {
+  const encoder = new TextEncoder()
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (event: string, data: unknown) => {
+        controller.enqueue(encoder.encode(
+          `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+        ))
+      }
+      try {
+        await runMeeting(config, send)
+        send("done", { sessionId })
+      } catch (err) {
+        send("error", { message: "Meeting failed" })
+      } finally {
+        controller.close()
+      }
+    }
+  })
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
+    }
+  })
+}
+```
+
+---
+
+## File Structure (สรุป)
+
+```
+app/
+  (auth)/login, register
+  (dashboard)/
+    page.tsx              ← Dashboard home
+    meeting/page.tsx      ← Meeting room (main feature)
+    agents/page.tsx       ← Agent builder
+    teams/page.tsx        ← Team management
+    history/page.tsx      ← Meeting history
+    memory/page.tsx       ← Memory facts
+    settings/page.tsx     ← Workspace settings
+  api/
+    auth/[...all]/        ← Better Auth handler
+    workspaces/           ← Workspace CRUD
+    agents/               ← Agent CRUD + knowledge
+    teams/                ← Team CRUD
+    meetings/stream/      ← SSE meeting stream (CORE)
+    memory/               ← Memory CRUD
+    stats/                ← Token usage stats
+    health/               ← Health check
+
+lib/
+  db/schema/              ← Drizzle schemas
+  db/queries/             ← All DB access functions
+  meeting/engine.ts       ← Mastra orchestration
+  meeting/prompts.ts      ← System prompts + anti-hallucination
+  integrations/           ← web-search, mcp-client
+  documents/parser.ts     ← PDF/Excel/Word parsing
+  encryption.ts           ← AES-256-GCM
+  rate-limit.ts           ← Redis rate limiting
+```
+
+---
+
+## Production Server
+
+- **Host**: `192.168.2.109` (ssh bosscatdog)
+- **Port**: `3004`
 - **OS**: Ubuntu 24.04, Docker 29.3.0
-- **Existing services**: PostgreSQL (5432, 5434), Redis (6380), Cloudflare tunnels
-- **LEDGIO AI Port**: **3004** (BossBoard demo ใช้ 3003, OpenClaw 3000, Centrix 3002)
-- **Budget**: App 512MB + Postgres 256MB + Redis 128MB ≈ 900MB total
+- **Memory budget**: App 512MB + Postgres 256MB + Redis 128MB
 
-## 🔗 Key Technical Decisions
+---
 
-| Decision | Choice | Reason |
-|----------|--------|--------|
-| ORM | Drizzle | Type-safe, lightweight, SQL-like |
-| Auth | NextAuth v5 | App Router native, Drizzle adapter |
-| DB | PostgreSQL | Relations, JSONB, proven |
-| Cache | Redis (ioredis) | Rate limiting, session cache |
-| Encryption | AES-256-GCM | Authenticated encryption (not CBC) |
-| LLM | Direct fetch() | No SDK bloat, control streaming |
-| CSS | Tailwind 4 | Same as BossBoard demo |
-| Deploy | Docker standalone | Consistent, resource-controlled |
+## Anti-Patterns (ห้ามทำ)
 
-## 🗂️ BossBoard → LEDGIO AI Mapping
-
-| BossBoard | LEDGIO AI |
-|-----------|-----------|
-| `lib/agents-store.ts` (all CRUD) | Split into `lib/db/queries/*.ts` per entity |
-| `app/api/team-research/stream/route.ts` | `lib/meeting/engine.ts` + `app/api/meetings/stream/route.ts` |
-| JSON files in `~/.bossboard/` | PostgreSQL tables |
-| AES-256-CBC | AES-256-GCM |
-| No auth | NextAuth v5 + RBAC |
-| Global data | companyId on every table |
-| `callLLM()` inline | `lib/llm/call-llm.ts` + provider modules |
+```
+❌ ใช้ any type
+❌ Direct SQL ใน route handlers
+❌ Store API key โดยไม่ encrypt
+❌ Query โดยไม่ filter workspaceId
+❌ Hard delete records
+❌ Buffer LLM response รอ complete ก่อน stream
+❌ ใช้คำว่า "Company" ใน UI (ใช้ "Workspace")
+❌ เพิ่ม feature ที่ไม่ได้อยู่ใน plan โดยไม่ถาม
+```

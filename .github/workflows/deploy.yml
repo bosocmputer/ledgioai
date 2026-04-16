@@ -1,0 +1,72 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Security audit
+        run: |
+          npm ci --ignore-scripts
+          npm audit --omit=dev --audit-level=critical || echo "⚠️ Vulnerabilities found (non-blocking)"
+
+      - name: Build Docker image
+        run: docker build -t ledgioai:latest .
+
+      - name: Save Docker image
+        run: docker save ledgioai:latest | gzip > ledgioai.tar.gz
+
+      - name: Deploy to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          source: "ledgioai.tar.gz,docker-compose.yml"
+          target: "/home/bosscatdog/deploy/ledgioai"
+
+      - name: Start containers
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            cd /home/bosscatdog/deploy/ledgioai
+            docker load < ledgioai.tar.gz
+            docker compose up -d --remove-orphans
+            rm ledgioai.tar.gz
+            docker system prune -f
+            echo "Deploy complete: $(date)"
+
+      - name: Health check
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          script: |
+            sleep 15
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3004/api/health)
+            if [ "$STATUS" != "200" ]; then
+              echo "❌ Health check failed (HTTP $STATUS)"
+              docker logs ledgioai --tail 50
+              exit 1
+            fi
+            echo "✅ Health check passed"

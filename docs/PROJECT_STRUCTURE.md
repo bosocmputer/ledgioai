@@ -1,300 +1,409 @@
 # LEDGIO AI — Project Structure
 
-> ไฟล์และโฟลเดอร์ทั้งหมดที่ต้องสร้าง, conventions, coding standards
+> File structure, coding conventions, dependencies — อัพเดต April 2026
 
-## 📁 Complete File Structure
+> ⚠️ **Note**: Next.js 16.2.3 (not 15). Uses `proxy.ts` instead of `middleware.ts`
+
+---
+
+## Full File Tree
 
 ```
 ledgioai/
 ├── .github/
+│   ├── copilot-instructions.md     # AI coding quick reference (อ่านก่อนเสมอ)
 │   └── workflows/
-│       └── deploy.yml              # CI/CD pipeline
+│       └── deploy.yml              # CI/CD: build → push → deploy
 │
-├── app/                            # Next.js App Router
-│   ├── globals.css                 # Tailwind 4 global styles
-│   ├── layout.tsx                  # Root layout (providers wrapper)
-│   ├── providers.tsx               # Client providers (session, theme, company)
-│   ├── icon.tsx                    # App icon
+├── proxy.ts                        # Route protection (Next.js 16 — replaces middleware.ts)
+│
+├── app/                            # Next.js 16 App Router
+│   ├── globals.css
+│   ├── layout.tsx                  # Root layout (Providers wrapper)
+│   ├── providers.tsx               # Client providers (WorkspaceProvider)
 │   │
-│   ├── (auth)/                     # Auth pages (no sidebar)
-│   │   ├── layout.tsx              # Minimal auth layout
-│   │   ├── login/
-│   │   │   └── page.tsx            # Login form
-│   │   └── register/
-│   │       └── page.tsx            # Register form
+│   ├── (auth)/                     # หน้า auth — ไม่มี sidebar
+│   │   ├── layout.tsx              # Centered card layout + branding
+│   │   ├── login/page.tsx          # Login form (authClient.signIn.email)
+│   │   └── register/page.tsx       # Register + auto-create workspace
 │   │
-│   ├── (dashboard)/                # Authenticated pages (with sidebar)
-│   │   ├── layout.tsx              # Dashboard layout (sidebar + main)
-│   │   ├── page.tsx                # Dashboard home / overview
+│   ├── (dashboard)/                # หน้าหลัก — ต้อง login (WorkspaceGuard)
+│   │   ├── layout.tsx              # Dashboard layout (sidebar + WorkspaceGuard)
+│   │   ├── page.tsx                # Dashboard home: stats cards + quick actions
+│   │   │
 │   │   ├── meeting/
-│   │   │   └── page.tsx            # Meeting room (main feature)
+│   │   │   └── page.tsx            # Meeting room (CORE FEATURE)
+│   │   │
 │   │   ├── agents/
-│   │   │   └── page.tsx            # Agent CRUD
-│   │   ├── teams/
-│   │   │   └── page.tsx            # Team management
-│   │   ├── history/
-│   │   │   ├── page.tsx            # Session history list
+│   │   │   ├── page.tsx            # Agent list + create
+│   │   │   ├── new/page.tsx        # Create agent (จาก template หรือเปล่า)
 │   │   │   └── [id]/
-│   │   │       └── page.tsx        # Session detail view
-│   │   ├── stats/
-│   │   │   └── page.tsx            # Statistics dashboard
+│   │   │       ├── page.tsx        # Agent detail + edit
+│   │   │       └── knowledge/
+│   │   │           └── page.tsx    # Knowledge files management
+│   │   │
+│   │   ├── teams/
+│   │   │   ├── page.tsx            # Team list + create
+│   │   │   └── [id]/page.tsx       # Team detail + assign agents
+│   │   │
+│   │   ├── templates/
+│   │   │   └── page.tsx            # Agent template gallery
+│   │   │
+│   │   ├── history/
+│   │   │   ├── page.tsx            # Meeting history (search + filter)
+│   │   │   └── [id]/page.tsx       # Meeting transcript detail
+│   │   │
 │   │   ├── memory/
-│   │   │   └── page.tsx            # Memory facts management
-│   │   ├── companies/
-│   │   │   ├── page.tsx            # Company list
-│   │   │   └── new/
-│   │   │       └── page.tsx        # Create new company
+│   │   │   └── page.tsx            # Memory facts (ดู/แก้ไข/ลบ)
+│   │   │
+│   │   ├── stats/
+│   │   │   └── page.tsx            # Token usage stats per agent
+│   │   │
+│   │   ├── workspaces/
+│   │   │   ├── page.tsx            # Workspace list + create new
+│   │   │   └── [id]/settings/
+│   │   │       └── page.tsx        # Workspace settings + API keys
+│   │   │
 │   │   └── settings/
-│   │       └── page.tsx            # Company settings
+│   │       └── page.tsx            # User profile + account settings
 │   │
 │   └── api/                        # Route Handlers
 │       ├── auth/
-│       │   ├── [...nextauth]/
-│       │   │   └── route.ts        # NextAuth handler
-│       │   └── register/
-│       │       └── route.ts        # User registration
-│       ├── companies/
+│       │   └── [...all]/route.ts   # Better Auth handler (catch-all)
+│       │
+│       ├── workspaces/
 │       │   ├── route.ts            # GET list, POST create
-│       │   ├── switch/
-│       │   │   └── route.ts        # POST switch active company
 │       │   └── [id]/
-│       │       ├── route.ts        # GET, PUT, DELETE company
-│       │       ├── invite/
-│       │       │   └── route.ts    # POST invite member
-│       │       └── members/
-│       │           └── route.ts    # GET members list
+│       │       ├── route.ts        # GET, PUT, DELETE
+│       │       ├── members/route.ts
+│       │       └── invite/route.ts
+│       │
 │       ├── agents/
 │       │   ├── route.ts            # GET list, POST create
 │       │   └── [id]/
-│       │       ├── route.ts        # GET, PUT, DELETE agent
+│       │       ├── route.ts        # GET, PUT, DELETE
 │       │       └── knowledge/
-│       │           ├── route.ts    # GET list knowledge
-│       │           ├── upload/
-│       │           │   └── route.ts # POST upload file
-│       │           └── [knowledgeId]/
-│       │               └── route.ts # DELETE knowledge
+│       │           ├── route.ts    # GET list
+│       │           ├── upload/route.ts   # POST upload file
+│       │           └── [kid]/route.ts    # DELETE knowledge
+│       │
+│       ├── agent-templates/
+│       │   └── route.ts            # GET list (system + workspace templates)
+│       │
 │       ├── teams/
 │       │   ├── route.ts            # GET list, POST create
-│       │   └── [id]/
-│       │       └── route.ts        # GET, PUT, DELETE team
+│       │   └── [id]/route.ts       # GET, PUT, DELETE + manage agents
+│       │
 │       ├── meetings/
-│       │   ├── route.ts            # GET list sessions
-│       │   ├── stream/
-│       │   │   └── route.ts        # POST SSE meeting stream
-│       │   └── [id]/
-│       │       └── route.ts        # GET session detail
+│       │   ├── route.ts            # GET list
+│       │   ├── stream/route.ts     # POST → SSE stream (CORE)
+│       │   └── [id]/route.ts       # GET detail + transcript
+│       │
 │       ├── documents/
-│       │   └── upload/
-│       │       └── route.ts        # POST upload for meeting context
+│       │   └── upload/route.ts     # POST upload for meeting context
+│       │
 │       ├── memory/
-│       │   ├── route.ts            # GET list, PUT upsert
-│       │   └── [id]/
-│       │       └── route.ts        # DELETE memory fact
+│       │   ├── route.ts            # GET list, POST upsert
+│       │   └── [id]/route.ts       # PUT, DELETE
+│       │
 │       ├── stats/
-│       │   └── route.ts            # GET agent statistics
+│       │   └── route.ts            # GET token usage stats
+│       │
 │       ├── settings/
-│       │   └── route.ts            # GET, PUT company settings
+│       │   └── route.ts            # GET, PUT workspace settings
+│       │
 │       └── health/
-│           └── route.ts            # GET health check
+│           └── route.ts            # GET health check (DB + Redis)
 │
-├── components/                     # Shared UI Components
-│   ├── ui/                         # Base UI components
+├── components/
+│   ├── ui/                         # Base UI components (shadcn-style)
 │   │   ├── button.tsx
 │   │   ├── input.tsx
-│   │   ├── dialog.tsx
-│   │   ├── dropdown.tsx
-│   │   ├── select.tsx
 │   │   ├── textarea.tsx
+│   │   ├── select.tsx
+│   │   ├── dialog.tsx
+│   │   ├── dropdown-menu.tsx
 │   │   ├── badge.tsx
 │   │   ├── card.tsx
 │   │   ├── avatar.tsx
 │   │   ├── skeleton.tsx
 │   │   ├── toast.tsx
 │   │   └── spinner.tsx
+│   │
 │   ├── layout/
 │   │   ├── sidebar.tsx             # Main sidebar navigation
-│   │   ├── company-switcher.tsx    # Company dropdown switcher
-│   │   ├── user-menu.tsx           # User dropdown (profile, logout)
-│   │   └── header.tsx              # Page header
+│   │   ├── workspace-switcher.tsx  # Workspace dropdown (top of sidebar)
+│   │   ├── user-menu.tsx           # Avatar dropdown (logout, settings)
+│   │   └── breadcrumb.tsx
+│   │
 │   ├── meeting/
-│   │   ├── meeting-room.tsx        # Main meeting room container
-│   │   ├── message-bubble.tsx      # Agent message display
-│   │   ├── meeting-controls.tsx    # Start/stop meeting controls
-│   │   ├── clarification-form.tsx  # Clarification questions UI
-│   │   ├── file-upload.tsx         # Document upload area
-│   │   └── web-sources.tsx         # Web search sources display
+│   │   ├── meeting-room.tsx        # Container: mode selector + stream UI
+│   │   ├── mode-selector.tsx       # Quick Ask / Consult / Full Board tabs
+│   │   ├── message-bubble.tsx      # Agent message display (streaming)
+│   │   ├── agent-avatar-row.tsx    # แสดง agents ที่กำลังประชุม
+│   │   ├── clarification-form.tsx  # Phase 0 คำถามจาก Chairman
+│   │   ├── file-upload-zone.tsx    # Drag-drop document upload
+│   │   ├── web-sources.tsx         # Web search results display
+│   │   └── memory-update-toast.tsx # แจ้งเมื่อ extract memory ใหม่
+│   │
 │   ├── agents/
-│   │   ├── agent-card.tsx          # Agent display card
-│   │   ├── agent-form.tsx          # Create/edit agent form
-│   │   └── knowledge-upload.tsx    # Knowledge file upload
+│   │   ├── agent-card.tsx          # Agent display card (name, role, stats)
+│   │   ├── agent-form.tsx          # Create/edit form
+│   │   ├── knowledge-list.tsx      # Knowledge files list
+│   │   └── soul-editor.tsx         # System prompt textarea + tips
+│   │
 │   ├── teams/
-│   │   ├── team-card.tsx           # Team display card
-│   │   └── team-form.tsx           # Create/edit team form
+│   │   ├── team-card.tsx
+│   │   └── team-form.tsx           # Create/edit + agent assignment
+│   │
+│   ├── templates/
+│   │   ├── template-gallery.tsx    # Grid แสดง templates
+│   │   └── template-card.tsx       # Template preview card
+│   │
 │   └── providers/
-│       ├── session-provider.tsx    # NextAuth SessionProvider
-│       ├── company-provider.tsx    # Active company context
-│       └── theme-provider.tsx      # Dark/light theme
+│       ├── workspace-provider.tsx  # Active workspace context + useWorkspace hook
+│       └── workspace-guard.tsx     # Auto-creates workspace if missing
 │
-├── lib/                            # Shared Libraries
-│   ├── db/                         # Database Layer
-│   │   ├── index.ts                # Drizzle client export
-│   │   ├── schema/                 # Drizzle schema definitions
+├── lib/
+│   ├── db/
+│   │   ├── index.ts                # Drizzle client (postgres.js)
+│   │   ├── schema/
 │   │   │   ├── index.ts            # Re-export all schemas
-│   │   │   ├── users.ts
-│   │   │   ├── accounts.ts
-│   │   │   ├── sessions.ts
-│   │   │   ├── companies.ts
-│   │   │   ├── user-companies.ts
 │   │   │   ├── agents.ts
 │   │   │   ├── agent-knowledge.ts
+│   │   │   ├── agent-templates.ts
 │   │   │   ├── teams.ts
 │   │   │   ├── team-agents.ts
-│   │   │   ├── research-sessions.ts
-│   │   │   ├── research-messages.ts
+│   │   │   ├── meetings.ts
+│   │   │   ├── meeting-messages.ts
 │   │   │   ├── memory-facts.ts
 │   │   │   ├── agent-stats.ts
-│   │   │   ├── company-settings.ts
-│   │   │   └── audit-logs.ts
-│   │   └── queries/                # Reusable query functions
-│   │       ├── agents.ts           # Agent CRUD queries
-│   │       ├── teams.ts            # Team CRUD queries
-│   │       ├── sessions.ts         # Session queries
-│   │       ├── memory.ts           # Memory queries
-│   │       ├── stats.ts            # Stats queries
-│   │       └── settings.ts         # Settings queries
+│   │   │   └── workspace-settings.ts
+│   │   └── queries/                # DB access layer — ห้าม query ตรงใน routes
+│   │       ├── workspaces.ts       # ✅ listUserWorkspaces, getUserRole, getMembers
+│   │       ├── settings.ts         # ✅ getWorkspaceSettings, upsertWorkspaceSettings
+│   │       ├── agents.ts           # ✅ CRUD + countByWorkspace
+│   │       ├── agent-knowledge.ts  # ✅ getByAgent, create, delete
+│   │       ├── agent-templates.ts  # ✅ getTemplates (system+workspace), getById
+│   │       ├── teams.ts            # ✅ CRUD with transaction agent assignment
+│   │       ├── meetings.ts
+│   │       ├── memory.ts
+│   │       └── stats.ts
 │   │
-│   ├── auth/                       # Auth Utilities
-│   │   ├── permissions.ts          # RBAC permission checks
-│   │   └── company-context.ts      # Active company helper
+│   ├── auth/
+│   │   ├── index.ts                # Better Auth instance (export `auth`)
+│   │   ├── client.ts               # Better Auth client (frontend + organizationClient)
+│   │   └── permissions.ts          # RBAC: hasPermission, requireAuth, requirePermission
 │   │
-│   ├── llm/                        # LLM Integration
-│   │   ├── call-llm.ts             # Multi-provider LLM caller
-│   │   ├── providers/              # Provider-specific implementations
-│   │   │   ├── anthropic.ts
-│   │   │   ├── openrouter.ts
-│   │   │   ├── openai.ts
-│   │   │   ├── gemini.ts
-│   │   │   └── ollama.ts
-│   │   └── streaming.ts            # SSE streaming utilities
+│   ├── meeting/
+│   │   ├── engine.ts               # Main entry: runMeeting(config, send)
+│   │   ├── modes/
+│   │   │   ├── quick-ask.ts        # 1-agent streaming
+│   │   │   ├── consult.ts          # 2-3 agents parallel + discussion
+│   │   │   └── full-board.ts       # 5-phase orchestration
+│   │   ├── context.ts              # buildMeetingContext()
+│   │   ├── prompts.ts              # System prompts + anti-hallucination
+│   │   ├── chairman.ts             # detectChairman, sortBySeniority
+│   │   ├── memory.ts               # extractMemoryFacts()
+│   │   └── model.ts                # buildModel(agent) → Vercel AI SDK model
 │   │
-│   ├── meeting/                    # Meeting Flow Engine
-│   │   ├── engine.ts               # Main orchestrator
-│   │   ├── phases/                 # Phase implementations
-│   │   │   ├── clarification.ts
-│   │   │   ├── analysis.ts
-│   │   │   ├── findings.ts
-│   │   │   ├── discussion.ts
-│   │   │   └── synthesis.ts
-│   │   ├── chairman.ts             # Chairman detection + seniority
-│   │   ├── voice.ts                # Agent speaking styles
-│   │   └── prompts.ts              # System prompts + anti-hallucination
+│   ├── mastra/
+│   │   └── index.ts                # Mastra instance (PgMemory backend)
 │   │
-│   ├── integrations/               # External Integrations
-│   │   ├── web-search.ts           # Serper + SerpApi
-│   │   ├── mcp-client.ts           # MCP Protocol client
-│   │   └── supermemory.ts          # Supermemory API (Phase 5)
+│   ├── integrations/
+│   │   ├── web-search.ts           # Serper + SerpApi + query rewriting
+│   │   └── mcp-client.ts           # MCP protocol client
 │   │
-│   ├── documents/                  # Document Processing
-│   │   ├── parser.ts               # Main parser (dispatch by type)
-│   │   ├── pdf.ts                  # PDF parsing
-│   │   ├── excel.ts                # Excel parsing
-│   │   ├── word.ts                 # Word parsing
-│   │   └── text.ts                 # CSV/JSON/Text parsing
+│   ├── documents/
+│   │   └── parser.ts               # ✅ PDF/Excel/Word/CSV/JSON/TXT/MD parser (single file)
 │   │
-│   ├── domain-knowledge.ts         # Built-in Thai tax/accounting rules
+│   ├── domain-knowledge.ts         # Built-in Thai tax/accounting/labor rules
 │   ├── encryption.ts               # AES-256-GCM encrypt/decrypt
 │   ├── rate-limit.ts               # Redis-backed rate limiting
-│   ├── redis.ts                    # Redis client
-│   ├── logger.ts                   # Pino logger
-│   ├── validations/                # Zod schemas
-│   │   ├── auth.ts
+│   ├── redis.ts                    # ioredis client singleton
+│   ├── logger.ts                   # Pino structured logger
+│   │
+│   ├── validations/                # Zod schemas (validate API input)
 │   │   ├── agent.ts
 │   │   ├── team.ts
 │   │   ├── meeting.ts
-│   │   ├── company.ts
+│   │   ├── workspace.ts
 │   │   └── settings.ts
-│   └── utils.ts                    # Shared utilities (cn, formatDate, etc.)
+│   │
+│   └── utils.ts                    # cn(), formatDate(), truncate(), etc.
 │
-├── drizzle/                        # Database Migrations
-│   └── *.sql                       # Generated by drizzle-kit
+├── drizzle/                        # Generated SQL migrations
+├── scripts/
+│   ├── seed.ts                     # Dev seed: templates + sample workspace
+│   ├── seed-templates.ts           # Seed built-in agent templates
+│   ├── migrate-from-bossboard.ts   # Phase 9: BossBoard → PostgreSQL
+│   └── verify-migration.ts
 │
-├── scripts/                        # Scripts
-│   ├── deploy.sh                   # Manual deploy script
-│   ├── backup-db.sh                # Database backup
-│   ├── migrate-from-bossboard.ts   # BossBoard data migration
-│   ├── verify-migration.ts         # Migration verification
-│   └── seed.ts                     # Development seed data
+├── types/
+│   └── index.ts                    # Shared TypeScript types
 │
-├── public/                         # Static files
-│   └── assets/
-│       └── platform-logos/
+├── docs/                           # Planning documents
 │
-├── types/                          # TypeScript type declarations
-│   └── next-auth.d.ts              # NextAuth session types
-│
-├── docs/                           # Documentation (this folder)
-│   ├── MASTER_PLAN.md
-│   ├── DATABASE_SCHEMA.md
-│   ├── AUTH_SYSTEM.md
-│   ├── MULTI_TENANT.md
-│   ├── AI_INTEGRATION.md
-│   ├── API_SPEC.md
-│   ├── MIGRATION.md
-│   ├── INFRASTRUCTURE.md
-│   └── PROJECT_STRUCTURE.md
-│
-├── .env.example                    # Environment variable template
-├── .gitignore
-├── auth.ts                         # NextAuth configuration (root)
-├── middleware.ts                    # Auth middleware (root)
-├── docker-compose.yml              # Docker Compose config
-├── Dockerfile                      # Multi-stage Docker build
-├── drizzle.config.ts               # Drizzle ORM config
-├── next.config.ts                  # Next.js config
+├── auth.ts                         # (ไม่มีแล้ว — Better Auth ใช้ lib/auth/index.ts)
+├── middleware.ts                   # Protect (dashboard) routes
+├── docker-compose.yml
+├── Dockerfile
+├── drizzle.config.ts
+├── next.config.ts
 ├── package.json
-├── postcss.config.js
-├── tailwind.config.ts              # Tailwind config (if needed beyond CSS)
 ├── tsconfig.json
-└── README.md
+└── .env.example
 ```
 
-## 🎨 Coding Standards
+---
+
+## Coding Standards
 
 ### TypeScript
-- **Strict mode** enabled
-- Use `interface` for shapes, `type` for unions/intersections
-- No `any` — use `unknown` with type narrowing
-- Named exports (not default) for utilities and components
+
+```typescript
+// ✅ strict mode เสมอ
+// ✅ interface สำหรับ object shapes
+interface AgentRow {
+  id: string
+  workspaceId: string
+  name: string
+  soul: string
+}
+
+// ✅ type สำหรับ unions
+type MeetingMode = "quick_ask" | "consult" | "full_board"
+type MeetingStatus = "running" | "completed" | "error" | "cancelled"
+
+// ❌ ห้ามใช้ any
+const data: any = ...  // ผิด
+const data: unknown = ...  // ถูก — แล้วค่อย narrow
+```
 
 ### React Components
-- **Function components** only (no class components)
-- **Server Components** by default (App Router)
-- `"use client"` only when needed (event handlers, hooks, browser APIs)
-- Props interface: `interface Props { ... }` above component
 
-### File Naming
-- **Files**: kebab-case (`agent-card.tsx`, `call-llm.ts`)
-- **Components**: PascalCase export (`export function AgentCard()`)
-- **API Routes**: Next.js conventions (`route.ts` only)
-- **DB Schema**: kebab-case files, camelCase column names in Drizzle
+```typescript
+// Server Component by default — ไม่ต้อง declare
+export default async function AgentsPage() {
+  const agents = await getAgentsByWorkspace(workspaceId)
+  return <AgentList agents={agents} />
+}
 
-### Imports
-- Absolute imports with `@/` alias (→ project root)
-- Group: 1) External packages, 2) `@/lib/*`, 3) `@/components/*`, 4) Relative
+// "use client" เฉพาะเมื่อ: useState, useEffect, onClick, browser APIs
+"use client"
+export function AgentForm({ onSubmit }: { onSubmit: (data: AgentInput) => void }) {
+  const [name, setName] = useState("")
+  ...
+}
+```
 
-### Error Handling
-- API routes: try-catch → JSON error response with status code
-- Use Zod for input validation (`.safeParse()`)
-- Database errors: catch and return generic message (don't leak)
-- LLM errors: retry once on 429, throw on other errors
+### File & Export Naming
 
-### Database
-- All queries go through `lib/db/queries/*.ts`
-- Always filter by `companyId` for business data
-- Use transactions for multi-table writes
-- Return types from queries (not `SELECT *`)
+| สิ่ง | Convention | ตัวอย่าง |
+|-----|-----------|---------|
+| Files | kebab-case | `agent-card.tsx`, `call-llm.ts` |
+| Components | PascalCase export | `export function AgentCard()` |
+| Utilities | camelCase export | `export function buildModel()` |
+| Types/Interfaces | PascalCase | `interface MeetingConfig` |
+| Enums (Drizzle) | camelCase values | `pgEnum("mode", ["quick_ask", ...])` |
 
-## 📦 Dependencies
+### Imports Order
+
+```typescript
+// 1. External packages
+import { Agent } from "@mastra/core"
+import { eq, and, isNull } from "drizzle-orm"
+
+// 2. Internal lib
+import { db } from "@/lib/db"
+import { agents } from "@/lib/db/schema"
+
+// 3. Components
+import { AgentCard } from "@/components/agents/agent-card"
+
+// 4. Relative (หลีกเลี่ยงถ้าทำได้)
+import { buildModel } from "./model"
+```
+
+### API Route Pattern
+
+```typescript
+// app/api/agents/route.ts
+import { auth } from "@/lib/auth"
+import { getAgentsByWorkspace } from "@/lib/db/queries/agents"
+import { createAgentSchema } from "@/lib/validations/agent"
+
+export async function GET(request: Request) {
+  // 1. Auth check
+  const session = await auth.api.getSession({ headers: request.headers })
+  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  // 2. Get workspace
+  const workspaceId = session.session.activeOrganizationId
+  if (!workspaceId) return Response.json({ error: "No active workspace" }, { status: 400 })
+
+  // 3. Query (always with workspaceId)
+  const agents = await getAgentsByWorkspace(workspaceId)
+  return Response.json({ data: agents })
+}
+
+export async function POST(request: Request) {
+  const session = await auth.api.getSession({ headers: request.headers })
+  if (!session) return Response.json({ error: "Unauthorized" }, { status: 401 })
+
+  // 4. Validate input
+  const body = await request.json()
+  const parsed = createAgentSchema.safeParse(body)
+  if (!parsed.success) {
+    return Response.json({ error: parsed.error.flatten() }, { status: 422 })
+  }
+
+  // 5. Business logic
+  const agent = await createAgent(session.session.activeOrganizationId!, parsed.data)
+  return Response.json({ data: agent }, { status: 201 })
+}
+```
+
+### DB Query Pattern
+
+```typescript
+// lib/db/queries/agents.ts — ทุก function ต้องรับ workspaceId
+import { db } from "@/lib/db"
+import { agents, agentKnowledge } from "@/lib/db/schema"
+import { eq, and, isNull } from "drizzle-orm"
+
+export async function getAgentsByWorkspace(workspaceId: string) {
+  return db.query.agents.findMany({
+    where: and(
+      eq(agents.workspaceId, workspaceId),
+      isNull(agents.deletedAt)           // soft delete filter เสมอ
+    ),
+    orderBy: (agents, { asc }) => [asc(agents.seniority)],
+  })
+}
+
+export async function getAgentById(agentId: string, workspaceId: string) {
+  // ต้อง verify workspaceId ด้วย — ห้าม query แค่ id อย่างเดียว
+  return db.query.agents.findFirst({
+    where: and(
+      eq(agents.id, agentId),
+      eq(agents.workspaceId, workspaceId),
+      isNull(agents.deletedAt)
+    ),
+  })
+}
+
+export async function softDeleteAgent(agentId: string, workspaceId: string) {
+  return db
+    .update(agents)
+    .set({ deletedAt: new Date() })
+    .where(and(eq(agents.id, agentId), eq(agents.workspaceId, workspaceId)))
+}
+```
+
+---
+
+## Dependencies
 
 ```json
 {
@@ -302,20 +411,32 @@ ledgioai/
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "next-auth": "5.0.0-beta.25",
-    "@auth/drizzle-adapter": "^1.0.0",
+
+    "better-auth": "^1.0.0",
+
+    "@mastra/core": "^0.5.0",
+    "@mastra/pg": "^0.5.0",
+    "@ai-sdk/anthropic": "^1.0.0",
+    "@ai-sdk/openai": "^1.0.0",
+    "@ai-sdk/google": "^1.0.0",
+    "ai": "^4.0.0",
+
     "drizzle-orm": "^0.35.0",
     "postgres": "^3.4.0",
+
     "ioredis": "^5.4.0",
     "bcryptjs": "^2.4.3",
     "zod": "^3.23.0",
     "pino": "^9.0.0",
-    "lucide-react": "^1.8.0",
+
+    "lucide-react": "^0.400.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+
     "mammoth": "^1.12.0",
     "pdf-parse": "^2.4.5",
     "xlsx": "^0.18.5",
+
     "tailwindcss": "^4.0.0",
     "@tailwindcss/postcss": "^4.0.0"
   },
@@ -330,19 +451,20 @@ ledgioai/
 }
 ```
 
-## 🔄 Config Files
+---
+
+## Config Files
 
 ### next.config.ts
 
 ```typescript
-import type { NextConfig } from "next";
+import type { NextConfig } from "next"
 
 const config: NextConfig = {
-  output: "standalone",         // For Docker deployment
-  serverExternalPackages: [     // Don't bundle these
-    "pino",
-    "pino-pretty",
-    "pdf-parse",
+  output: "standalone",
+  serverExternalPackages: [
+    "pino", "pino-pretty", "pdf-parse",
+    "@mastra/core", "@mastra/pg",
   ],
   async headers() {
     return [{
@@ -352,17 +474,48 @@ const config: NextConfig = {
         { key: "X-Content-Type-Options", value: "nosniff" },
         { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
       ],
-    }];
+    }]
   },
-};
+}
 
-export default config;
+export default config
+```
+
+### middleware.ts
+
+```typescript
+import { NextResponse } from "next/server"
+import type { NextRequest } from "next/server"
+import { auth } from "@/lib/auth"
+
+export async function middleware(request: NextRequest) {
+  const session = await auth.api.getSession({ headers: request.headers })
+
+  // ถ้าไม่มี session และพยายามเข้า dashboard → redirect login
+  if (!session && request.nextUrl.pathname.startsWith("/(dashboard)")) {
+    return NextResponse.redirect(new URL("/login", request.url))
+  }
+
+  // ถ้า login แล้วพยายามเข้า auth pages → redirect dashboard
+  if (session && (
+    request.nextUrl.pathname === "/login" ||
+    request.nextUrl.pathname === "/register"
+  )) {
+    return NextResponse.redirect(new URL("/", request.url))
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+}
 ```
 
 ### drizzle.config.ts
 
 ```typescript
-import { defineConfig } from "drizzle-kit";
+import { defineConfig } from "drizzle-kit"
 
 export default defineConfig({
   schema: "./lib/db/schema/index.ts",
@@ -371,33 +524,68 @@ export default defineConfig({
   dbCredentials: {
     url: process.env.DATABASE_URL!,
   },
-});
+})
 ```
 
-### tsconfig.json
+### .env.example
 
-```json
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "jsx": "preserve",
-    "incremental": true,
-    "plugins": [{ "name": "next" }],
-    "paths": {
-      "@/*": ["./*"]
-    }
-  },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
-}
+```bash
+# Database
+DATABASE_URL=postgresql://ledgio:password@localhost:5434/ledgio
+
+# Redis
+REDIS_URL=redis://localhost:6380
+
+# Encryption (generate: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+ENCRYPTION_KEY=your_64_hex_chars_here
+
+# Better Auth
+BETTER_AUTH_SECRET=your_secret_here
+BETTER_AUTH_URL=http://localhost:3004
+
+# Next.js
+NEXTAUTH_URL=http://localhost:3004
+NODE_ENV=development
+
+# Web Search (optional)
+SERPER_API_KEY=
+SERP_API_KEY=
+
+# Sentry (optional, Phase 7)
+SENTRY_DSN=
+```
+
+---
+
+## Environment-Specific Notes
+
+### Development
+
+```bash
+npm run dev          # Next.js dev server port 3004
+npx drizzle-kit push # Apply schema changes (dev)
+npx tsx scripts/seed.ts  # Seed dev data + templates
+```
+
+### Production (Docker)
+
+```bash
+docker compose up -d            # Start all services
+docker compose logs -f app      # Follow logs
+docker compose exec app sh      # Shell into container
+```
+
+---
+
+## Error Response Format
+
+```typescript
+// Success
+{ "data": T }
+{ "data": T[], "total": number, "page": number, "pageSize": number }
+
+// Error
+{ "error": "Human-readable message" }          // 400, 401, 403, 404
+{ "error": { fieldErrors: { ... } } }          // 422 validation
+{ "error": "Internal server error" }           // 500 (never leak DB errors)
 ```

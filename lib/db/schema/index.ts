@@ -1,0 +1,16 @@
+// Re-export all schemas
+// Auth schemas are managed by Better Auth — see lib/auth/schema.ts
+export * from "./auth"
+export * from "./agents"
+export * from "./agent-knowledge"
+export * from "./agent-templates"
+export * from "./teams"
+export * from "./team-agents"
+export * from "./meetings"
+export * from "./meeting-messages"
+export * from "./memory-facts"
+export * from "./agent-stats"
+export * from "./workspace-settings"
+export * from "./audit-logs"
+export * from "./meeting-templates"
+export * from "./scheduled-meetings"

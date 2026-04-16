@@ -1,0 +1,17 @@
+# Cloudflare Tunnel Configuration for LEDGIO AI
+# Place this on the production server at /etc/cloudflare/<tunnel-id>.yml
+# Then run: cloudflared tunnel --config /etc/cloudflare/config.yml run
+
+tunnel: <tunnel-id>
+credentials-file: /etc/cloudflare/<tunnel-id>.json
+
+ingress:
+  - hostname: ledgio.ai
+    service: http://localhost:3004
+    originRequest:
+      noTLSVerify: true
+  - hostname: api.ledgio.ai
+    service: http://localhost:3004
+    originRequest:
+      noTLSVerify: true
+  - service: http_status:404

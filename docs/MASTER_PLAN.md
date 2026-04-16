@@ -1,295 +1,449 @@
-# LEDGIO AI — Master Implementation Plan
+# LEDGIO AI — Master Plan (Revised)
 
-> แผนการพัฒนาเต็มระบบ จาก BossBoard demo → LEDGIO AI production
+> แผนการพัฒนาเต็มระบบ — อัพเดต April 2026
 
-## 🎯 Vision
+---
 
-LEDGIO AI เป็น Multi-Tenant SaaS platform สำหรับสำนักงานบัญชีไทย ที่มี AI Board Meeting Room ให้คำปรึกษาด้านบัญชี ภาษี ตรวจสอบ วิเคราะห์งบ — ขายเป็นแพ็คเกจให้เจ้าของธุรกิจที่มีหลายบริษัท
+## 🎯 Vision & Core Value Proposition
 
-## 📊 Current State (BossBoard Demo)
+**"คุณไม่ต้องจ้างที่ปรึกษาหลายคน — แค่สร้าง AI Expert Team ของคุณเองใน LEDGIO AI"**
 
-### สิ่งที่มีแล้ว (Working)
-- ✅ Multi-Agent AI Meeting — 5-Phase Flow (Clarification → Analysis → Findings → Discussion → Synthesis)
+LEDGIO AI คือ **AI Expert Team Builder** — platform ที่ให้ผู้ใช้สร้างทีมผู้เชี่ยวชาญ AI หลายด้านแล้วให้พวกเขา **ประชุม ถกเถียง และหาคำตอบร่วมกัน** แบบเดียวกับการจ้างทีมที่ปรึกษาจริงๆ แต่ราคาถูกกว่ามาก
+
+### ตัวอย่าง Use Case จริง
+
+**เจ้าของบริษัทถามว่า**: "ปีนี้ควรจดทะเบียน VAT ไหม ถ้าจดแล้วผลกระทบต่อลูกค้ารายย่อยเป็นยังไง?"
+
+**แทนที่จะถาม ChatGPT คนเดียว** → LEDGIO AI ให้:
+- 🧑‍💼 **ที่ปรึกษาภาษี** วิเคราะห์เงื่อนไขกฎหมาย VAT มาตรา 81
+- 📊 **นักวิเคราะห์การเงิน** คำนวณ impact ต่อ cash flow และราคาขาย
+- 🔍 **นักบัญชีอาวุโส** ชี้ขั้นตอน compliance และเอกสารที่ต้องเตรียม
+- ⚖️ **ผู้ตรวจสอบภายใน** เตือนความเสี่ยงและ red flags ที่อาจเกิดขึ้น
+
+ทั้ง 4 คน **ถกเถียงกัน** → สรุปคำแนะนำที่รอบด้านให้เจ้าของบริษัทตัดสินใจได้เลย
+
+### กลุ่มลูกค้าหลัก
+
+| กลุ่ม | Use Case | Value |
+|-------|----------|-------|
+| **สำนักงานบัญชี** | สร้างทีม AI expert ช่วยตอบคำถามลูกค้าซับซ้อน | ลดเวลาค้นหา ไม่ต้องจำทุกมาตรา |
+| **เจ้าของธุรกิจ SME** | มีที่ปรึกษา AI ที่รู้จักบริษัทตัวเอง | ประหยัดค่าที่ปรึกษา |
+| **CFO / ผู้บริหารการเงิน** | Board meeting เสมือนจริงก่อนตัดสินใจใหญ่ | ลด risk จากการตัดสินใจพลาด |
+| **นักบัญชีอิสระ (Freelance)** | สร้าง expert ช่วยตัวเองในงานที่ไม่ถนัด | เพิ่มขีดความสามารถ |
+
+---
+
+## 📊 สิ่งที่มีอยู่แล้ว (BossBoard Demo)
+
+### Working Features
+- ✅ Multi-Agent AI Meeting — 5-Phase Flow
 - ✅ 6 LLM Providers (Anthropic, OpenRouter, OpenAI, Gemini, Ollama, Custom)
-- ✅ Document Upload & Parsing (PDF, Excel, Word, CSV, JSON, Text)
-- ✅ MCP Integration ดึงข้อมูลจากระบบ ERP
-- ✅ Web Search (Serper + SerpApi fallback)
-- ✅ Agent Knowledge Base (upload เอกสารเฉพาะ agent)
-- ✅ Cross-Session Memory (จำข้อมูลข้ามเซสชัน)
-- ✅ Agent Statistics (token usage tracking)
-- ✅ Domain Knowledge (built-in ความรู้ภาษี/บัญชี/แรงงานไทย)
+- ✅ Document Upload & Parsing (PDF, Excel, Word, CSV)
+- ✅ MCP Integration (ERP data)
+- ✅ Web Search (Serper + SerpApi)
+- ✅ Agent Knowledge Base
+- ✅ Cross-Session Memory
+- ✅ Agent Statistics
+- ✅ Domain Knowledge (Thai tax/accounting)
 - ✅ Anti-Hallucination Rules
-- ✅ Rate Limiting
-- ✅ AES-256-CBC API Key Encryption
 - ✅ Prompt Caching (Anthropic)
 
-### สิ่งที่ต้องสร้างใหม่ (Production Requirements)
+### สิ่งที่ต้องสร้างใหม่ (Production)
 - ❌ Database (ยังใช้ JSON files)
 - ❌ Authentication / User System
-- ❌ Multi-Company / Multi-Tenant
-- ❌ RBAC (Role-Based Access Control)
-- ❌ Vector Store / RAG (ยัง context stuff 40K chars)
-- ❌ LLM Gateway (ยัง direct fetch ทุก provider)
-- ❌ Background Job Queue
-- ❌ Proper Caching Layer
-- ❌ Monitoring & Logging
-- ❌ CI/CD Pipeline
-- ❌ Billing / Subscription (future)
+- ❌ Multi-Workspace / Multi-Tenant
+- ❌ RBAC
+- ❌ Agent Templates Marketplace (ใหม่)
+- ❌ 3-Tier Meeting Modes (ใหม่)
+- ❌ Monitoring & CI/CD
 
 ---
 
-## 🗂️ Implementation Phases
+## 🏗️ Architecture Decision (Updated April 2026)
 
-### Phase 1: Foundation — Project Setup & Database (Week 1-2)
+| Layer | เดิม (Plan) | ใหม่ (Revised) | เหตุผล |
+|-------|------------|----------------|--------|
+| **Auth** | NextAuth v5 | **Better Auth** | Built-in organizations, RBAC, 2FA ไม่ต้องเขียนเอง |
+| **Meeting Engine** | เขียนเอง ~800 lines | **Mastra AI** | TypeScript-native, AgentNetwork, Memory, MCP built-in |
+| **DB/ORM** | PostgreSQL + Drizzle | PostgreSQL + Drizzle | เหมือนเดิม ดีอยู่แล้ว |
+| **Cache** | Redis | Redis | เหมือนเดิม |
+| **Deploy** | Docker + GitHub Actions | Docker + GitHub Actions | เหมือนเดิม |
 
-**เป้าหมาย**: ตั้งโปรเจคใหม่ + PostgreSQL database + Drizzle ORM
+### ทำไมถึงเปลี่ยน
 
-| Task | Detail | Priority |
-|------|--------|----------|
-| 1.1 | Init Next.js 15 project with TypeScript, Tailwind 4, App Router | P0 |
-| 1.2 | Setup Drizzle ORM + PostgreSQL connection | P0 |
-| 1.3 | สร้าง database schema ทั้งหมด (ดู DATABASE_SCHEMA.md) | P0 |
-| 1.4 | เขียน migration scripts (drizzle-kit) | P0 |
-| 1.5 | Setup connection pooling (pg pool) | P0 |
-| 1.6 | สร้าง seed script สำหรับ development data | P1 |
-| 1.7 | Setup Docker Compose (app + postgres + redis) | P0 |
+**Better Auth** แทน NextAuth v5:
+- `organizations` plugin = แทน `user_companies` junction table ที่ต้องเขียนเอง
+- `RBAC` plugin = owner/admin/member/viewer built-in
+- 2FA, Passkeys, Email verification included
+- Drizzle adapter รองรับ full — ไม่ต้องเขียน schema auth เอง
 
-**Deliverable**: Next.js app ที่ connect PostgreSQL ได้, schema ครบ, docker-compose ทำงานได้
-
-### Phase 2: Authentication & User System (Week 2-3)
-
-**เป้าหมาย**: NextAuth v5 + User registration/login + Session management
-
-| Task | Detail | Priority |
-|------|--------|----------|
-| 2.1 | Install & configure NextAuth v5 (Auth.js) with Drizzle adapter | P0 |
-| 2.2 | Email/Password credentials provider | P0 |
-| 2.3 | Google OAuth provider (optional, easy to add) | P2 |
-| 2.4 | Session management (JWT + database sessions) | P0 |
-| 2.5 | Protected route middleware (auth check) | P0 |
-| 2.6 | Login / Register pages | P0 |
-| 2.7 | User profile page + password change | P1 |
-| 2.8 | API route authentication (getServerSession) | P0 |
-
-**Deliverable**: User สามารถ register, login, logout ได้ + ทุก API route ต้อง authenticated
-
-### Phase 3: Multi-Company / Multi-Tenant (Week 3-4)
-
-**เป้าหมาย**: ผู้ใช้สร้างหลายบริษัทได้, ข้อมูลทั้งหมด scope ตาม companyId
-
-| Task | Detail | Priority |
-|------|--------|----------|
-| 3.1 | Company CRUD API (create, read, update, delete) | P0 |
-| 3.2 | User-Company relationship (junction table, roles: owner/admin/member) | P0 |
-| 3.3 | Company switcher UI ใน sidebar | P0 |
-| 3.4 | Active company context (cookie/session based) | P0 |
-| 3.5 | Scope ทุก query ด้วย companyId (agents, teams, sessions, memory, stats) | P0 |
-| 3.6 | Company settings (แยก companyInfo, API keys per company) | P0 |
-| 3.7 | Default company creation on first login | P1 |
-| 3.8 | Company invitation system (invite by email) | P2 |
-
-**Deliverable**: ผู้ใช้สลับบริษัทได้, ข้อมูลแยก scope อย่างสมบูรณ์
-
-### Phase 4: Core Business Logic Migration (Week 4-6)
-
-**เป้าหมาย**: ย้าย business logic จาก BossBoard → LEDGIO AI (DB-backed)
-
-| Task | Detail | Priority |
-|------|--------|----------|
-| 4.1 | Agent CRUD — สร้าง/แก้ไข/ลบ agent (database, encrypted API keys) | P0 |
-| 4.2 | Team CRUD — สร้าง/แก้ไข/ลบ team + assign agents | P0 |
-| 4.3 | Research Session — สร้าง/อ่าน/complete session (database) | P0 |
-| 4.4 | Research Messages — append messages, streaming SSE | P0 |
-| 4.5 | **Meeting Flow Engine** — 5-Phase flow (ย้ายจาก stream/route.ts) | P0 |
-| 4.6 | callLLM() — Multi-provider LLM calls (6 providers) | P0 |
-| 4.7 | Web Search — Serper + SerpApi with trusted URL scoping | P0 |
-| 4.8 | MCP Integration — fetchMcpContext() with tool scoring | P0 |
-| 4.9 | Document Upload & Parsing (PDF/Excel/Word/CSV/JSON) | P0 |
-| 4.10 | Agent Knowledge Base — upload, store, retrieve, rank by relevance | P0 |
-| 4.11 | Cross-Session Memory — upsert/read memory facts | P0 |
-| 4.12 | Agent Statistics — token usage, session count, daily stats | P0 |
-| 4.13 | Domain Knowledge — built-in Thai tax/accounting knowledge | P0 |
-| 4.14 | Settings — per-company settings with encrypted API keys | P0 |
-| 4.15 | Rate Limiting — per-user + per-company rate limiting | P0 |
-
-**Deliverable**: ทุก feature ของ BossBoard ทำงานบน PostgreSQL + scoped by company
-
-### Phase 5: AI Enhancement (Week 6-8)
-
-**เป้าหมาย**: Supermemory integration, LLM streaming, improved RAG
-
-| Task | Detail | Priority |
-|------|--------|----------|
-| 5.1 | Supermemory API integration (vector memory) | P1 |
-| 5.2 | True SSE streaming from LLM → client (ปัจจุบัน wait-for-complete) | P1 |
-| 5.3 | Token usage optimization (smarter context window management) | P1 |
-| 5.4 | Conversation summarization (auto-compress long history) | P2 |
-| 5.5 | Agent persona refinement engine | P2 |
-| 5.6 | Multi-language support (Thai primary, English secondary) | P2 |
-
-**Deliverable**: ระบบ AI ที่ smart + efficient + stream real-time
-
-### Phase 6: UI/UX Production (Week 8-10)
-
-**เป้าหมาย**: Production-ready UI
-
-| Task | Detail | Priority |
-|------|--------|----------|
-| 6.1 | Responsive design (mobile-first) | P1 |
-| 6.2 | Company switcher + sidebar redesign | P0 |
-| 6.3 | Dashboard — overview ของ usage, recent sessions, quick stats | P1 |
-| 6.4 | Meeting room — real-time streaming UI | P0 |
-| 6.5 | Agent management — CRUD + knowledge upload | P0 |
-| 6.6 | Team management | P0 |
-| 6.7 | Research history — search, filter, pagination | P1 |
-| 6.8 | Settings page — company info, API keys, web search config | P0 |
-| 6.9 | User profile + account settings | P1 |
-| 6.10 | Error handling + loading states + empty states | P1 |
-| 6.11 | Dark mode (already partially done) | P2 |
-| 6.12 | i18n framework (Thai/English) | P2 |
-
-**Deliverable**: Production UI ที่สวย, responsive, UX ดี
-
-### Phase 7: Infrastructure & DevOps (Week 10-11)
-
-**เป้าหมาย**: Production-grade infrastructure
-
-| Task | Detail | Priority |
-|------|--------|----------|
-| 7.1 | Docker Compose production config | P0 |
-| 7.2 | Health check endpoints | P0 |
-| 7.3 | Structured logging (pino) | P1 |
-| 7.4 | Error tracking (Sentry — free tier) | P1 |
-| 7.5 | Database backup automation (pg_dump cron) | P0 |
-| 7.6 | GitHub Actions CI/CD pipeline | P1 |
-| 7.7 | Cloudflare Tunnel configuration | P0 |
-| 7.8 | SSL/TLS (via Cloudflare) | P0 |
-| 7.9 | Environment variable management | P0 |
-| 7.10 | Zero-downtime deployment strategy | P2 |
-
-**Deliverable**: ระบบ deploy ได้อย่างมั่นใจ, มี monitoring + backup
-
-### Phase 8: Security Hardening (Week 11-12)
-
-**เป้าหมาย**: Production security
-
-| Task | Detail | Priority |
-|------|--------|----------|
-| 8.1 | Input validation (zod schemas ทุก API) | P0 |
-| 8.2 | CSRF protection | P0 |
-| 8.3 | XSS prevention (Content-Security-Policy headers) | P0 |
-| 8.4 | SQL injection prevention (Drizzle parameterized queries) | P0 |
-| 8.5 | Rate limiting (per-user, per-IP, per-endpoint) | P0 |
-| 8.6 | API key encryption (AES-256-GCM upgrade from CBC) | P1 |
-| 8.7 | PDPA compliance (Thai data protection law) | P1 |
-| 8.8 | Audit logging (who did what when) | P1 |
-| 8.9 | Secret management (env vars, not filesystem) | P0 |
-| 8.10 | Dependency vulnerability scanning | P1 |
-
-**Deliverable**: ผ่าน security checklist สำหรับ production
-
-### Phase 9: Data Migration (Week 12)
-
-**เป้าหมาย**: Migrate ข้อมูลจาก BossBoard JSON → LEDGIO AI PostgreSQL
-
-| Task | Detail | Priority |
-|------|--------|----------|
-| 9.1 | Migration script: agents.json → agents table | P0 |
-| 9.2 | Migration script: teams.json → teams table | P0 |
-| 9.3 | Migration script: research-history.json → sessions + messages | P0 |
-| 9.4 | Migration script: settings.json → company_settings table | P0 |
-| 9.5 | Migration script: client-memory.json → memory_facts table | P0 |
-| 9.6 | Migration script: agent-stats.json → agent_stats table | P0 |
-| 9.7 | Verify migration — data integrity check | P0 |
-| 9.8 | Rollback plan | P0 |
-
-**Deliverable**: ข้อมูลเดิมทั้งหมดย้ายมาสำเร็จ ไม่สูญหาย
-
-### Phase 10: Future — Billing & Subscription (TBD)
-
-| Task | Detail | Priority |
-|------|--------|----------|
-| 10.1 | Subscription plans (Free/Pro/Enterprise) | P3 |
-| 10.2 | Usage metering (token count per company) | P3 |
-| 10.3 | Payment integration (Stripe or local gateway) | P3 |
-| 10.4 | Admin panel (super admin dashboard) | P3 |
-| 10.5 | Marketplace — shared agent templates | P3 |
+**Mastra** แทน manual meeting engine:
+- AgentNetwork orchestrates หลาย agents พร้อมกัน — ตรงกับ 5-phase meeting
+- Memory system built-in — แทน Supermemory API (third-party dependency)
+- MCP protocol built-in — เชื่อม ERP/Centrix ได้ทันที
+- 100+ LLM providers ผ่าน Vercel AI SDK
+- SSE Streaming built-in
+- Production-proven: Replit, PayPal, SoftBank ใช้แล้ว
 
 ---
 
-## 🔧 Tech Stack Summary
+## 🎭 Product Features (Core)
 
-| Layer | Technology | Why |
-|-------|-----------|-----|
-| **Framework** | Next.js 15 (App Router) | SSR + API routes + RSC, same as demo |
-| **Language** | TypeScript 5 | Type safety |
-| **UI** | React 19 + Tailwind CSS 4 | Same as demo |
-| **Icons** | Lucide React | Same as demo |
-| **Markdown** | react-markdown + remark-gfm | Same as demo |
-| **Database** | PostgreSQL 16 | Relational, JSON support, already on server |
-| **ORM** | Drizzle ORM | Type-safe, lightweight, great DX |
-| **Auth** | NextAuth v5 (Auth.js) | Standard for Next.js, Drizzle adapter |
-| **Cache** | Redis 7 | Sessions, rate limit, caching (already on server) |
-| **Queue** | BullMQ | Background jobs (optional Phase 5+) |
-| **Vector Memory** | Supermemory API | Free tier 1M tokens/month |
-| **Doc Parsing** | pdf-parse, mammoth, xlsx | Same as demo |
-| **Validation** | Zod | Input validation |
+### 1. Agent Builder — สร้าง "ผู้เชี่ยวชาญ" ของตัวเอง
+
+ผู้ใช้สร้าง agent ได้อย่างอิสระ ไม่จำกัดแค่บัญชี/ภาษี:
+
+```
+ตัวอย่าง agents ที่สร้างได้:
+👨‍⚖️ ที่ปรึกษากฎหมายแรงงาน
+📊 นักวิเคราะห์ตลาด
+🏭 วิศวกรการผลิต (OEE, Lean)
+💊 ที่ปรึกษาการจัดซื้อยา (โรงพยาบาล)
+🏗️ ผู้ตรวจสอบสัญญาก่อสร้าง
+🌾 ที่ปรึกษาเกษตรกรรม
+```
+
+แต่ละ agent มี:
+- **Soul (System Prompt)** — บุคลิก ความเชี่ยวชาญ วิธีการพูด
+- **Knowledge Base** — เอกสารเฉพาะทาง อัพโหลดได้
+- **LLM Provider** — เลือก model ที่เหมาะกับงาน
+- **Web Search** — ค้นหาข้อมูลล่าสุดได้
+- **Trusted Sources** — กำหนด domain ที่เชื่อถือได้
+- **MCP Connection** — ดึงข้อมูลจากระบบภายนอก
+
+### 2. Team Builder — จัดทีมผู้เชี่ยวชาญ
+
+จัดกลุ่ม agents เป็น "ทีม" สำหรับงานต่างๆ:
+
+```
+ตัวอย่างทีม:
+🏛️ "คณะกรรมการบัญชีและภาษี"
+   → ที่ปรึกษาภาษี + นักบัญชี + ผู้ตรวจสอบ
+
+⚖️ "ทีมที่ปรึกษากฎหมายธุรกิจ"
+   → ทนายความ + นักบัญชี + ที่ปรึกษาการเงิน
+
+📈 "คณะวิเคราะห์การลงทุน"
+   → นักวิเคราะห์ + ผู้ตรวจสอบความเสี่ยง + CFO AI
+```
+
+### 3. Meeting Room — 3 Modes ตามความซับซ้อน
+
+```
+⚡ Quick Ask (< 10 วินาที)
+   → ถามผู้เชี่ยวชาญคนเดียวแบบ chat
+   → ใช้สำหรับคำถามง่ายๆ ด่วน
+   → ตอบพร้อมอ้างอิงมาตราทันที
+
+🤝 Consult (30-60 วินาที)
+   → 2-3 คน วิเคราะห์และถกเถียงกัน
+   → ใช้สำหรับปัญหาที่ต้องการ 2nd opinion
+   → แสดง timeline การถกเถียงแบบ real-time
+
+🏛️ Full Board Meeting (2-5 นาที)
+   → ทั้งทีมประชุมเต็ม 5 phases
+   → ใช้สำหรับการตัดสินใจสำคัญ
+   → สรุปมติ + extract memory facts อัตโนมัติ
+```
+
+### 4. Agent Memory — จำบริษัทลูกค้าทุกรายละเอียด
+
+ระบบจำข้อมูลข้ามเซสชัน:
+
+```
+workspace: "บริษัท ABC จำกัด"
+├── vat_registered: true
+├── vat_number: "0105xxxxxxxxx"
+├── employee_count: 12
+├── fiscal_year: "มกราคม - ธันวาคม"
+├── accounting_standard: "NPAEs"
+├── main_business: "นำเข้า-ส่งออกอาหารแปรรูป"
+└── last_audit: "ปี 2567"
+
+→ ทุก session ถัดไป agents จะรู้ข้อมูลนี้โดยอัตโนมัติ
+→ ไม่ต้องอธิบาย context ใหม่ทุกครั้ง
+```
+
+### 5. Agent Templates — ไม่ต้องเริ่มจากศูนย์
+
+Pre-built templates สำหรับ domains ทั่วไป:
+
+```
+📂 Thai Accounting & Tax Pack
+   ├── ที่ปรึกษาภาษีมูลค่าเพิ่ม (VAT Specialist)
+   ├── ผู้เชี่ยวชาญภาษีเงินได้นิติบุคคล
+   ├── ผู้ตรวจสอบบัญชี (CPA)
+   └── นักบัญชีอาวุโส
+
+📂 Legal Advisory Pack
+   ├── ที่ปรึกษากฎหมายแรงงาน
+   ├── ที่ปรึกษาสัญญาธุรกิจ
+   └── ผู้เชี่ยวชาญ BOI
+
+📂 Business Analysis Pack
+   ├── นักวิเคราะห์การเงิน
+   ├── ที่ปรึกษากลยุทธ์
+   └── ผู้ตรวจสอบความเสี่ยง
+```
+
+---
+
+## 🗂️ Implementation Phases (Revised)
+
+> ⚠️ **Note**: Next.js 16.2.3 (not 15). Breaking change: `middleware.ts` → `proxy.ts`
+
+### Phase 1: Foundation — Database + Auth (Week 1-2) ✅ COMPLETED
+
+**เป้าหมาย**: โปรเจคพร้อม develop + Better Auth ทำงานได้
+
+| Task | Detail | P | Status |
+|------|--------|---|--------|
+| 1.1 | Init Next.js 16 + TypeScript + Tailwind 4 + App Router | P0 | ✅ |
+| 1.2 | Setup Drizzle ORM + PostgreSQL connection + pooling | P0 | ✅ |
+| 1.3 | ติดตั้ง Better Auth + organizations + RBAC plugins | P0 | ✅ |
+| 1.4 | Generate Better Auth schema (Drizzle) — users, organizations, members, sessions | P0 | ✅ |
+| 1.5 | เพิ่ม custom tables: agents, teams, sessions, memory, stats | P0 | ✅ |
+| 1.6 | Setup Docker Compose (app + postgres + redis) | P0 | ✅ |
+| 1.7 | สร้าง .env.example ครบทุก variable | P0 | ✅ |
+| 1.8 | สร้าง seed script สำหรับ dev data (8 templates) | P1 | ✅ |
+
+**Deliverable**: ✅ `npm run dev` ขึ้นได้, connect DB + Redis ok, 17 tables ครบ, health check ok
+
+---
+
+### Phase 2: Auth + Workspace (Week 2-3) ✅ COMPLETED
+
+**เป้าหมาย**: Login/Register + สร้าง Workspace (เปลี่ยนชื่อจาก Company เป็น Workspace)
+
+| Task | Detail | P | Status |
+|------|--------|---|--------|
+| 2.1 | Login/Register pages (Better Auth credentials) | P0 | ✅ |
+| 2.2 | Protected route proxy (proxy.ts — Next.js 16) | P0 | ✅ |
+| 2.3 | Workspace CRUD API (create, read, update, settings) | P0 | ✅ |
+| 2.4 | Workspace switcher component ใน sidebar | P0 | ✅ |
+| 2.5 | Active workspace context (provider + guard) | P0 | ✅ |
+| 2.6 | RBAC permission helpers (hasPermission, requireAuth, requirePermission) | P0 | ✅ |
+| 2.7 | Auto-create default workspace on first login (WorkspaceGuard) | P1 | ✅ |
+| 2.8 | Workspace invitation by email | P2 | ✅ |
+
+**Deliverable**: ✅ User สมัคร login ได้ + สร้าง workspace สลับได้ + sidebar + dashboard layout
+
+---
+
+### Phase 3: Agent & Team Builder (Week 3-5) ✅ COMPLETED
+
+**เป้าหมาย**: สร้าง/จัดการ agents และ teams ได้ครบ
+
+| Task | Detail | P | Status |
+|------|--------|---|--------|
+| 3.1 | Agent CRUD API + UI (สร้าง/แก้ไข/ลบ) | P0 | ✅ |
+| 3.2 | Agent form: soul, role, provider, model, encrypted API key | P0 | ✅ |
+| 3.3 | Knowledge Base: upload PDF/Excel/Word + store + display | P0 | ✅ |
+| 3.4 | Agent Templates: pre-built Thai accounting/legal/finance agents | P0 | ✅ |
+| 3.5 | Team CRUD API + UI | P0 | ✅ |
+| 3.6 | Drag-and-drop agent → team assignment | P1 | — |
+| 3.7 | Agent preview: test agent ด้วย Quick Ask ก่อน add to team | P1 | — |
+
+**Deliverable**: ✅ สร้าง agent ได้ + upload knowledge + จัดทีมได้ + template gallery
+
+---
+
+### Phase 4: Mastra Meeting Engine (Week 5-8) ✅ COMPLETED
+
+**เป้าหมาย**: ระบบประชุม AI ทำงานได้จริงทั้ง 3 modes
+
+| Task | Detail | P | Status |
+|------|--------|---|--------|
+| 4.1 | ติดตั้ง Mastra + model builder + agent factory | P0 | ✅ |
+| 4.2 | Meeting context builder + prompt builders | P0 | ✅ |
+| 4.3 | **Quick Ask Mode**: single agent, instant streaming response | P0 | ✅ |
+| 4.4 | **Consult Mode**: 2-3 agents, parallel analysis + discussion | P0 | ✅ |
+| 4.5 | **Full Board Meeting**: 5-phase flow (manual orchestration) | P0 | ✅ |
+| 4.6 | SSE streaming → client (real-time agent messages) | P0 | ✅ |
+| 4.7 | Document upload for meeting context (PDF/Excel/Word) | P0 | ✅ |
+| 4.8 | MCP integration: เชื่อม ERP/Centrix ผ่าน Mastra MCP plugin | P1 | ⏳ deferred |
+| 4.9 | Clarification phase: Chairman ถามก่อนประชุม | P0 | ✅ |
+| 4.10 | Memory extraction: auto-extract facts หลัง meeting จบ | P0 | ✅ |
+| 4.11 | Anti-hallucination rules inject ใน every prompt | P0 | ✅ |
+| 4.12 | Agent stats: track token usage ต่อ agent ต่อ workspace | P0 | ✅ |
+| — | Meeting room UI page + history page | P0 | ✅ |
+
+**Deliverable**: Meeting room ทำงานได้ทั้ง 3 modes + streaming จริง ✅
+
+---
+
+### Phase 5: Memory & Intelligence (Week 8-9) ✅
+
+**เป้าหมาย**: ระบบจำข้อมูลข้ามเซสชันทำงานได้ดี
+
+| Task | Detail | P | Status |
+|------|--------|---|--------|
+| 5.1 | Memory queries layer: full CRUD + search + upsert + categories | P0 | ✅ |
+| 5.2 | Memory API routes: GET/POST/PATCH/DELETE + filter/search/pagination | P0 | ✅ |
+| 5.3 | Memory facts UI: ดู/เพิ่ม/แก้ไข/ลบ + category filter + search | P1 | ✅ |
+| 5.4 | Context window management: auto-truncate token budget 12K | P1 | ✅ |
+| 5.5 | Session history search: ค้นหาใน meeting history | P2 | ✅ |
+| 5.6 | Workspace profile page: ข้อมูลบริษัทที่ agent รู้ | P1 | Deferred |
+
+**Deliverable**: Agent จำข้อมูล workspace ข้ามเซสชัน + history ค้นหาได้ ✅
+
+---
+
+### Phase 6: UI/UX Production (Week 9-11) ✅
+
+**เป้าหมาย**: UI พร้อม production — สวย ใช้ง่าย ไม่ต้อง manual มาก
+
+| Task | Detail | P | Status |
+|------|--------|---|--------|
+| 6.1 | Dashboard: overview stats, recent sessions, quick start | P0 | ✅ Stats API + live dashboard |
+| 6.2 | Meeting room: copy button, streaming cursor, group-hover | P0 | ✅ |
+| 6.3 | Agent cards: seniority stars, active badge, skeleton loading | P1 | ✅ |
+| 6.4 | Responsive sidebar: mobile drawer + hamburger menu | P0 | ✅ |
+| 6.5 | Loading skeletons ทุกหน้า (agents, teams, history, memory, templates) | P1 | ✅ |
+| 6.6 | Empty states polish (ทุกหน้ามี icon + CTA) | P1 | ✅ |
+| 6.7 | Stats page: token chart, mode distribution, top agents table | P1 | ✅ |
+| 6.8 | Build verify (36 routes, 0 errors) + API test | P1 | ✅ |
+| 6.9 | Dark mode | P2 | ⏳ Deferred |
+
+**Deliverable**: UI ที่ user ใหม่เปิดมาแล้วรู้ทันทีว่าต้องทำอะไร
+
+---
+
+### Phase 7: Infrastructure & DevOps (Week 11-12) ✅
+
+| Task | Detail | P | Status |
+|------|--------|---|--------|
+| 7.1 | Docker Compose production (env_file, logging, .dockerignore) | P0 | ✅ |
+| 7.2 | GitHub Actions CI/CD (build → SCP → deploy → health check) | P0 | ✅ |
+| 7.3 | Health check endpoint (version, uptime, timestamp, DB+Redis) | P0 | ✅ |
+| 7.4 | Database backup script (pg_dump cron daily, 30-day retention) | P0 | ✅ |
+| 7.5 | Cloudflare Tunnel config template | P0 | ✅ |
+| 7.6 | Structured logging (Pino + pino-pretty dev) | P1 | ✅ |
+| 7.7 | Security headers (CSP, X-Frame-Options, Permissions-Policy, etc.) | P0 | ✅ |
+
+---
+
+### Phase 8: Security & Compliance (Week 12) ✅
+
+| Task | Detail | P | Status |
+|------|--------|---|--------|
+| 8.1 | Input validation (Zod) ทุก API endpoint + safe body parsing | P0 | ✅ |
+| 8.2 | Rate limiting per user (Redis sliding window) — auth/mutation/read/meeting | P0 | ✅ |
+| 8.3 | API key encryption AES-256-GCM | P0 | ✅ (Phase 3) |
+| 8.4 | Security headers (CSP, X-Frame-Options, Permissions-Policy) | P0 | ✅ (Phase 7) |
+| 8.5 | PDPA compliance: data export + right to delete (workspace-level) | P1 | ✅ |
+| 8.6 | Audit logs: who did what when (agents, teams, meetings, memory) | P1 | ✅ |
+| 8.7 | Dependency vulnerability scan (npm audit in CI/CD) | P1 | ✅ |
+
+---
+
+### Phase 9: Migration & Launch (Week 12) ✅
+
+| Task | Detail | P | Status |
+|------|--------|---|--------|
+| 9.1 | Migrate BossBoard data → PostgreSQL (scripts/migrate-from-bossboard.ts) | P0 | ✅ |
+| 9.2 | Re-encrypt API keys CBC → GCM (built into migration script) | P0 | ✅ |
+| 9.3 | Data integrity verification (scripts/verify-migration.ts) | P0 | ✅ |
+| 9.4 | Smoke test: 7 APIs + Quick Ask SSE stream with migrated agent | P0 | ✅ |
+
+**Migration Results:**
+- 5 agents, 1 team, 6 memory facts, 7 meetings (39 messages), 9 stat entries migrated
+- All 5 API keys re-encrypted CBC→GCM, verified decryptable
+- Quick Ask streaming confirmed working with migrated นักบัญชีอาวุโส agent
+
+---
+
+### Phase 10: Future Roadmap (TBD)
+
+| Feature | Detail |
+|---------|--------|
+| **LINE Integration** | Bot สำหรับ Quick Ask ผ่าน LINE (คนไทยใช้ LINE) |
+| **Agent Marketplace** | แชร์ agent templates ระหว่าง workspace |
+| **Subscription Billing** | Free/Pro/Enterprise tiers |
+| **Super Admin Panel** | จัดการ users, workspaces, monitoring |
+| **API Access** | REST API สำหรับ integrate กับ app อื่น |
+| **Webhook** | Trigger meeting อัตโนมัติจาก event ภายนอก |
+
+---
+
+## 🔧 Tech Stack (Final)
+
+| Layer | Technology | เหตุผล |
+|-------|-----------|--------|
+| **Framework** | Next.js 15 (App Router) | SSR + API routes + RSC |
+| **Language** | TypeScript 5 strict | Type safety ทุกชั้น |
+| **UI** | React 19 + Tailwind 4 | เดิม ดีอยู่แล้ว |
+| **Icons** | Lucide React | เดิม |
+| **Database** | PostgreSQL 16 | Relational, JSONB, อยู่บน server แล้ว |
+| **ORM** | Drizzle ORM | Type-safe, lightweight |
+| **Auth** | **Better Auth** | Organizations + RBAC built-in |
+| **AI Engine** | **Mastra AI** | AgentNetwork, Memory, MCP, Streaming |
+| **LLM** | ผ่าน Mastra (Vercel AI SDK) | 100+ providers, switch ได้ง่าย |
+| **Cache** | Redis 7 (ioredis) | Rate limit, session cache |
+| **Doc Parsing** | pdf-parse, mammoth, xlsx | เดิม (หรือ markitdown ถ้าต้องการ accuracy สูง) |
+| **Validation** | Zod | Input validation ทุก API |
 | **Logging** | Pino | Structured logging |
-| **Encryption** | AES-256-GCM | API key encryption (upgrade from CBC) |
-| **Container** | Docker + Docker Compose | Same deployment model |
-| **CI/CD** | GitHub Actions | Automated build + deploy |
-| **CDN/Tunnel** | Cloudflare | Already in use |
+| **Encryption** | AES-256-GCM (Node crypto) | API key encryption |
+| **Container** | Docker + Docker Compose | On-premise deploy |
+| **CI/CD** | GitHub Actions | Auto build + deploy |
+| **CDN/Tunnel** | Cloudflare | HTTPS + อยู่บน server แล้ว |
 
 ---
 
-## 📁 Key Files from BossBoard to Study
+## ⚠️ Critical Rules (ไม่เปลี่ยนแปลง)
 
-เมื่อ implement ให้อ่านไฟล์เหล่านี้จาก BossBoard demo เพื่อเข้าใจ business logic:
+### Security
+- **ALWAYS** filter by `workspaceId` ทุก business query — multi-tenant safety
+- **NEVER** expose raw DB errors to client
+- API keys เก็บ encrypted AES-256-GCM เท่านั้น
+- Hash password ด้วย bcryptjs cost 12
+- Rate limit: 10/min auth, 30/min mutations, 200/min reads
 
-| BossBoard File | What it does | Migrate to |
-|----------------|-------------|------------|
-| `lib/agents-store.ts` | ทุกฟังก์ชัน data access — agents, teams, sessions, memory, stats, encryption | `lib/db/*.ts` (Drizzle queries) |
-| `app/api/team-research/stream/route.ts` | Meeting flow engine — callLLM, 5-phase, MCP, web search | `lib/meeting-engine.ts` |
-| `app/api/team-research/upload/route.ts` | Document parsing — PDF, Excel, Word, CSV, JSON | `lib/document-parser.ts` |
-| `lib/domain-knowledge.ts` | Built-in Thai tax/accounting rules | Copy + enhance |
-| `lib/rate-limit.ts` | In-memory rate limiting | Redis-backed rate limit |
-| `app/sidebar.tsx` | Navigation sidebar | Add company switcher |
-| `app/page.tsx` | Main research/meeting page | Split into dashboard + meeting |
-| `app/agents/page.tsx` | Agent management CRUD | Add companyId scoping |
-| `app/teams/page.tsx` | Team management | Add companyId scoping |
-| `app/settings/page.tsx` | Settings page | Per-company settings |
+### Architecture
+- Server Components by default, `"use client"` เฉพาะเมื่อจำเป็น
+- DB access ผ่าน `lib/db/queries/*.ts` เท่านั้น — ห้าม query ตรงใน route handler
+- Zod validate ทุก API input
+- Transaction สำหรับ multi-table writes
+- Soft deletes ทุกตาราง (`deleted_at`)
 
----
+### Meeting Engine (Mastra)
+- Quick Ask: 1 agent, timeout 30s
+- Consult: 2-3 agents, timeout 90s
+- Full Board: ทีมทั้งหมด, timeout 300s
+- Anti-hallucination inject ทุก prompt
+- SSE stream ทันที — ห้าม buffer รอ complete
 
-## 🗓️ Timeline Summary
-
-| Phase | Duration | Focus |
-|-------|----------|-------|
-| Phase 1 | Week 1-2 | Foundation + Database |
-| Phase 2 | Week 2-3 | Authentication |
-| Phase 3 | Week 3-4 | Multi-Company |
-| Phase 4 | Week 4-6 | Core Business Logic |
-| Phase 5 | Week 6-8 | AI Enhancement |
-| Phase 6 | Week 8-10 | UI/UX Production |
-| Phase 7 | Week 10-11 | Infrastructure |
-| Phase 8 | Week 11-12 | Security |
-| Phase 9 | Week 12 | Data Migration |
-| Phase 10 | TBD | Billing (future) |
-
-**Total: ~12 weeks สำหรับ production-ready MVP**
+### Terminology (ใช้ให้สม่ำเสมอ)
+- **Workspace** (ไม่ใช่ Company) — พื้นที่ทำงานของ user แต่ละราย
+- **Agent** — ผู้เชี่ยวชาญ AI คนหนึ่ง
+- **Team** — กลุ่ม agents
+- **Meeting** — session การประชุม (3 modes)
+- **Memory** — ข้อมูลที่ agent จำข้ามเซสชัน
 
 ---
 
-## ⚠️ Critical Decisions
+## 🖥️ Production Server
 
-1. **Database**: PostgreSQL (reuse existing instance on server port 5434 or create new)
-2. **ORM**: Drizzle (not Prisma — lighter, faster, better for this scale)
-3. **Auth**: NextAuth v5 with credentials + optional OAuth
-4. **Multi-Tenant Strategy**: Shared database, row-level isolation via `companyId`
-5. **Encryption**: Upgrade to AES-256-GCM (from CBC), key from environment variable
-6. **LLM Calls**: Keep direct fetch (no AI SDK) — proven in demo, less abstraction
-7. **Streaming**: Implement true SSE streaming (demo waits for complete response)
+- **IP**: 192.168.2.109 (ssh bosscatdog@...)
+- **Specs**: Intel i3-8100, 7.6GB RAM, no GPU, 25GB free disk, Ubuntu 24.04
+- **Services อยู่แล้ว**: PostgreSQL (5432, 5434), Redis (6380), Cloudflare tunnels
+- **Port**: 3004 (BossBoard=3003, OpenClaw=3000, Centrix=3002)
+- **Memory budget**: App 512MB + Postgres 256MB + Redis 128MB ≈ 900MB
 
 ---
 
-*ดูรายละเอียดแต่ละหัวข้อในเอกสาร docs/ แยกแต่ละไฟล์*
+## 🗓️ Timeline
+
+| Phase | สัปดาห์ | งานหลัก |
+|-------|---------|---------|
+| 1 | 1-2 | Foundation + DB + Better Auth |
+| 2 | 2-3 | Auth UI + Workspace management |
+| 3 | 3-5 | Agent & Team Builder + Templates |
+| 4 | 5-8 | Mastra Meeting Engine (3 modes) |
+| 5 | 8-9 | Memory & Intelligence |
+| 6 | 9-11 | UI/UX Production |
+| 7 | 11-12 | Infrastructure + DevOps |
+| 8 | 12 | Security + Compliance |
+| 9 | 12 | Migration + Launch |
+
+**Total: ~12 สัปดาห์ สู่ production-ready MVP**
