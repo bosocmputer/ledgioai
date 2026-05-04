@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BarChart3, TrendingUp, Star, Zap, Users, MessageSquare, DollarSign } from "lucide-react"
+import { BarChart3, TrendingUp, Star, Zap, Users, MessageSquare, DollarSign, Lightbulb } from "lucide-react"
 import { EmptyState } from "@/components/ui/empty-state"
 import { MetricCard } from "@/components/ui/metric-card"
 import { PageHeader } from "@/components/ui/page-header"
@@ -77,6 +77,30 @@ export default function InsightDashboardPage() {
     consult: "🤝 Consult",
     full_board: "🏛️ Full Board",
   }
+  const dominantMode = data.meetingsByMode
+    .slice()
+    .sort((a, b) => b.count - a.count)[0]
+  const recommendations = [
+    totalMeetings === 0
+      ? "ยังไม่มีข้อมูลประชุม ลองเริ่มด้วย Quick Ask 1-2 เคสเพื่อ calibrate ทีม"
+      : null,
+    data.totalCostUsd > 1
+      ? "ค่าใช้จ่าย LLM เริ่มมีนัยสำคัญ ควรตรวจว่าเคสทั่วไปใช้ model ราคาสูงเกินจำเป็นหรือไม่"
+      : "ค่าใช้จ่าย LLM ยังอยู่ในระดับต่ำ เหมาะกับการทดลอง workflow เพิ่ม",
+    totalTokens > 100_000
+      ? "Token ใช้สูง ควรแยกเอกสารยาวเป็นไฟล์เฉพาะเคสและใช้ Full Board เฉพาะเรื่องสำคัญ"
+      : null,
+    data.avgRating.rated_count < 3
+      ? "ยังมี rating น้อย แนะนำให้ทีมกดให้คะแนนหลังประชุมเพื่ออ่านคุณภาพคำตอบได้แม่นขึ้น"
+      : data.avgRating.avg_rating && data.avgRating.avg_rating < 4
+        ? "คะแนนเฉลี่ยต่ำกว่า 4 ควรทบทวน prompt/Soul ของผู้เชี่ยวชาญที่ใช้บ่อย"
+        : "คะแนนเฉลี่ยดูดี ให้ใช้ pattern ทีมเดิมเป็น template สำหรับเคสใหม่",
+    dominantMode?.mode === "full_board"
+      ? "Full Board ถูกใช้บ่อย ควรตั้ง quota/token limit ให้ชัดเพื่อคุมต้นทุน"
+      : dominantMode
+        ? `${modeLabel[dominantMode.mode] ?? dominantMode.mode} เป็นโหมดหลักตอนนี้ ลองเทียบกับ Consult ในเคสที่ต้องการ second opinion`
+        : null,
+  ].filter(Boolean) as string[]
 
   return (
     <div className="space-y-6">
@@ -127,6 +151,20 @@ export default function InsightDashboardPage() {
               </p>
             </div>
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-100">
+          <Lightbulb className="h-4 w-4" />
+          คำแนะนำจากการใช้งาน
+        </h2>
+        <div className="mt-3 grid gap-2 lg:grid-cols-2">
+          {recommendations.map((item) => (
+            <div key={item} className="rounded-lg bg-white/70 p-3 text-sm text-amber-900 dark:bg-gray-950/60 dark:text-amber-100">
+              {item}
+            </div>
+          ))}
         </div>
       </div>
 

@@ -395,7 +395,7 @@ export default function AgentDetailPage({
             {uploading ? "กำลังอัปโหลด..." : "อัปโหลด"}
             <input
               type="file"
-              accept=".pdf,.xlsx,.xls,.docx,.csv,.json,.txt,.md"
+              accept=".pdf,.xlsx,.docx,.csv,.json,.txt,.md"
               onChange={handleUpload}
               className="hidden"
               disabled={uploading}

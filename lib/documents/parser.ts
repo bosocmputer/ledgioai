@@ -1,5 +1,5 @@
 import { PDFParse } from "pdf-parse"
-import * as XLSX from "xlsx"
+import ExcelJS from "exceljs"
 import * as mammoth from "mammoth"
 
 export interface ParsedDocument {
@@ -13,7 +13,6 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 const ALLOWED_MIME_TYPES: Record<string, string> = {
   "application/pdf": "pdf",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
-  "application/vnd.ms-excel": "xls",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
   "text/csv": "csv",
   "application/json": "json",
@@ -51,7 +50,6 @@ export async function parseDocument(
     case "pdf":
       return parsePdf(buffer, filename)
     case "xlsx":
-    case "xls":
       return parseExcel(buffer, filename)
     case "docx":
       return parseDocx(buffer, filename)
@@ -81,20 +79,37 @@ async function parsePdf(buffer: Buffer, filename: string): Promise<ParsedDocumen
   }
 }
 
-function parseExcel(buffer: Buffer, filename: string): ParsedDocument {
-  const workbook = XLSX.read(buffer, { type: "buffer" })
+async function parseExcel(buffer: Buffer, filename: string): Promise<ParsedDocument> {
+  const workbook = new ExcelJS.Workbook()
+  await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0])
   const sheets: string[] = []
 
-  for (const sheetName of workbook.SheetNames) {
-    const sheet = workbook.Sheets[sheetName]
-    const csv = XLSX.utils.sheet_to_csv(sheet)
-    sheets.push(`=== Sheet: ${sheetName} ===\n${csv}`)
+  workbook.eachSheet((sheet) => {
+    const rows: string[] = []
+    sheet.eachRow((row) => {
+      const values = Array.isArray(row.values) ? row.values.slice(1) : []
+      rows.push(
+        values
+          .map((value) => {
+            if (value == null) return ""
+            if (typeof value === "object" && "text" in value) return String(value.text)
+            if (typeof value === "object" && "result" in value) return String(value.result ?? "")
+            return String(value)
+          })
+          .join(","),
+      )
+    })
+    sheets.push(`=== Sheet: ${sheet.name} ===\n${rows.join("\n")}`)
+  })
+
+  if (sheets.length === 0) {
+    sheets.push("ไม่พบข้อมูลในไฟล์ Excel")
   }
 
   const content = sheets.join("\n\n")
   return {
     content,
-    meta: `Excel: ${workbook.SheetNames.length} sheets (${workbook.SheetNames.join(", ")})`,
+    meta: `Excel: ${workbook.worksheets.length} sheets (${workbook.worksheets.map((sheet) => sheet.name).join(", ")})`,
     tokens: estimateTokens(content),
   }
 }

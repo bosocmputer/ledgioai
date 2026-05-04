@@ -4,12 +4,12 @@ import { useEffect, useState, useCallback } from "react"
 import { useWorkspace } from "@/components/providers/workspace-provider"
 import {
   Settings, Users, Shield, Globe, Cpu, Save, Loader2,
-  Mail, UserPlus, Crown, Eye, UserCheck, Copy, Check,
+  Mail, UserPlus, Crown, Eye, UserCheck, Copy, Check, Building2,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
-import { Field, FormSection, inputClasses } from "@/components/ui/form-section"
+import { Field, FormSection, inputClasses, textareaClasses } from "@/components/ui/form-section"
 import { PageHeader } from "@/components/ui/page-header"
 
 // ── Types ──────────────────────────────────────────────
@@ -37,6 +37,15 @@ interface Member {
   userId: string
   role: string
   createdAt: string
+}
+
+interface WorkspaceProfile {
+  companyName: string
+  taxId: string
+  businessType: string
+  fiscalYear: string
+  accountingStandard: string
+  policyNotes: string
 }
 
 const providerOptions = [
@@ -72,7 +81,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [tab, setTab] = useState<"general" | "members" | "search">("general")
+  const [tab, setTab] = useState<"general" | "profile" | "members" | "search">("general")
 
   // Settings form
   const [defaultProvider, setDefaultProvider] = useState("")
@@ -83,6 +92,14 @@ export default function SettingsPage() {
   const [enableMcp, setEnableMcp] = useState(false)
   const [serperApiKey, setSerperApiKey] = useState("")
   const [serpApiKey, setSerpApiKey] = useState("")
+  const [profile, setProfile] = useState<WorkspaceProfile>({
+    companyName: "",
+    taxId: "",
+    businessType: "",
+    fiscalYear: "",
+    accountingStandard: "",
+    policyNotes: "",
+  })
 
   // Invite
   const [inviteEmail, setInviteEmail] = useState("")
@@ -118,6 +135,13 @@ export default function SettingsPage() {
         setEnableWebSearch(d.settings.enableWebSearch)
         setEnableMcp(d.settings.enableMcp)
       }
+
+      fetch(`/api/workspaces/${activeWorkspace.id}/profile`)
+        .then((res) => res.json())
+        .then((json) => {
+          if (json.data) setProfile(json.data)
+        })
+        .catch(() => undefined)
     } finally {
       setLoading(false)
     }
@@ -157,6 +181,27 @@ export default function SettingsPage() {
       } else {
         const json = await res.json()
         alert(json.error || "บันทึกไม่สำเร็จ")
+      }
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleProfileSave() {
+    if (!activeWorkspace || !isAdmin) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/workspaces/${activeWorkspace.id}/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(profile),
+      })
+      if (res.ok) {
+        setSaved(true)
+        setTimeout(() => setSaved(false), 2000)
+      } else {
+        const json = await res.json()
+        alert(json.error || "บันทึกข้อมูลบริษัทไม่สำเร็จ")
       }
     } finally {
       setSaving(false)
@@ -232,6 +277,7 @@ export default function SettingsPage() {
       <div className="flex gap-1 rounded-lg bg-gray-100 dark:bg-gray-800 p-1">
         {[
           { key: "general" as const, label: "ทั่วไป", icon: Cpu },
+          { key: "profile" as const, label: "ข้อมูลบริษัท", icon: Building2 },
           { key: "members" as const, label: "สมาชิก", icon: Users },
           { key: "search" as const, label: "Web Search", icon: Globe },
         ].map(({ key, label, icon: Icon }) => (
@@ -350,6 +396,82 @@ export default function SettingsPage() {
                   <Save className="h-4 w-4" />
                 )}
                 {saved ? "บันทึกแล้ว" : "บันทึก"}
+              </Button>
+            </div>
+          )}
+        </FormSection>
+      )}
+
+      {/* Tab: Profile */}
+      {tab === "profile" && (
+        <FormSection
+          title="ข้อมูลบริษัทสำหรับ AI"
+          description="ข้อมูลชุดนี้ถูกเก็บในความจำของเวิร์กสเปซ และจะถูกแนบเข้า context ทุกครั้งที่ประชุม"
+          icon={<Building2 className="h-5 w-5" />}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="ชื่อบริษัท / องค์กร">
+              <input
+                value={profile.companyName}
+                onChange={(e) => setProfile((prev) => ({ ...prev, companyName: e.target.value }))}
+                disabled={!isAdmin}
+                placeholder="เช่น บริษัท เลดจิโอ จำกัด"
+                className={inputClasses}
+              />
+            </Field>
+            <Field label="เลขผู้เสียภาษี">
+              <input
+                value={profile.taxId}
+                onChange={(e) => setProfile((prev) => ({ ...prev, taxId: e.target.value }))}
+                disabled={!isAdmin}
+                placeholder="เช่น 010555..."
+                className={inputClasses}
+              />
+            </Field>
+            <Field label="ประเภทธุรกิจ">
+              <input
+                value={profile.businessType}
+                onChange={(e) => setProfile((prev) => ({ ...prev, businessType: e.target.value }))}
+                disabled={!isAdmin}
+                placeholder="เช่น สำนักงานบัญชี, SME ค้าปลีก"
+                className={inputClasses}
+              />
+            </Field>
+            <Field label="ปีงบประมาณ">
+              <input
+                value={profile.fiscalYear}
+                onChange={(e) => setProfile((prev) => ({ ...prev, fiscalYear: e.target.value }))}
+                disabled={!isAdmin}
+                placeholder="เช่น มกราคม-ธันวาคม"
+                className={inputClasses}
+              />
+            </Field>
+            <Field label="มาตรฐานบัญชี" className="sm:col-span-2">
+              <input
+                value={profile.accountingStandard}
+                onChange={(e) => setProfile((prev) => ({ ...prev, accountingStandard: e.target.value }))}
+                disabled={!isAdmin}
+                placeholder="เช่น TFRS for NPAEs, TFRS"
+                className={inputClasses}
+              />
+            </Field>
+            <Field label="นโยบาย / ข้อควรระวังภายใน" className="sm:col-span-2">
+              <textarea
+                value={profile.policyNotes}
+                onChange={(e) => setProfile((prev) => ({ ...prev, policyNotes: e.target.value }))}
+                disabled={!isAdmin}
+                rows={5}
+                placeholder="เช่น ต้องอ้างอิงเอกสารภายในก่อนตอบ, ห้ามเสนอข้อมูลภาษีโดยไม่มีแหล่งอ้างอิง..."
+                className={textareaClasses}
+              />
+            </Field>
+          </div>
+
+          {isAdmin && (
+            <div className="mt-5 flex justify-end">
+              <Button onClick={handleProfileSave} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <Check className="h-4 w-4" /> : <Save className="h-4 w-4" />}
+                {saved ? "บันทึกแล้ว" : "บันทึกข้อมูลบริษัท"}
               </Button>
             </div>
           )}

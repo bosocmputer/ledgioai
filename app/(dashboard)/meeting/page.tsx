@@ -16,6 +16,9 @@ import {
   Download,
   Share2,
   SlidersHorizontal,
+  AlertTriangle,
+  Lightbulb,
+  Star,
 } from "lucide-react"
 import { VoiceInput } from "@/components/meeting/voice-input"
 import { PageInfo } from "@/components/ui/page-info"
@@ -100,6 +103,12 @@ const MODES: Array<{
   },
 ]
 
+const PROMPT_SUGGESTIONS = [
+  "ช่วยวิเคราะห์ความเสี่ยงภาษีของเคสนี้ให้หน่อย",
+  "เปรียบเทียบทางเลือก 3 ทาง พร้อมข้อดีข้อเสีย",
+  "ช่วยสรุปประเด็นที่ควรถามลูกค้าเพิ่มก่อนตัดสินใจ",
+]
+
 // ── Main Component ─────────────────────────────────────
 
 export default function MeetingPage() {
@@ -122,6 +131,8 @@ export default function MeetingPage() {
   const [totalTokens, setTotalTokens] = useState(0)
   const [language, setLanguage] = useState("th")
   const [showSetup, setShowSetup] = useState(false)
+  const [rating, setRating] = useState(0)
+  const [ratingSubmitted, setRatingSubmitted] = useState(false)
 
   // Clarification state
   const [clarificationQuestions, setClarificationQuestions] = useState<string[]>([])
@@ -168,6 +179,7 @@ export default function MeetingPage() {
   const currentMode = MODES.find((m) => m.id === selectedMode)!
   const canStart = question.trim() && selectedCount >= currentMode.minAgents && !isRunning
   const selectedTeamName = teams.find((team) => team.id === selectedTeamId)?.name
+  const selectedAgents = agents.filter((agent) => selectedAgentIds.includes(agent.id))
 
   // ── Start Meeting ──────────────────────────────────
   const startMeeting = useCallback(
@@ -176,10 +188,13 @@ export default function MeetingPage() {
 
       setIsRunning(true)
       setMessages([])
+      setMeetingId(null)
       setStatusText("กำลังเริ่มการประชุม...")
       setCurrentPhase(null)
       setTotalTokens(0)
       setShowClarification(false)
+      setRating(0)
+      setRatingSubmitted(false)
 
       const formData = new FormData()
       formData.append("question", question.trim())
@@ -389,6 +404,19 @@ export default function MeetingPage() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
+  async function submitRating(star: number) {
+    if (!meetingId || ratingSubmitted) return
+    setRating(star)
+    const res = await fetch(`/api/meetings/${meetingId}/rate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rating: star }),
+    })
+    if (res.ok) {
+      setRatingSubmitted(true)
+    }
+  }
+
   const setupPanel = (
     <aside className="flex h-full w-full flex-col overflow-y-auto bg-gray-50 p-4 dark:bg-gray-950 lg:w-80 lg:border-r lg:border-gray-200 lg:dark:border-gray-700">
       <div className="mb-4 flex items-center justify-between lg:hidden">
@@ -423,6 +451,14 @@ export default function MeetingPage() {
               </button>
             ))}
           </div>
+          {selectedMode === "full_board" && (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200">
+              <div className="flex gap-2">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <p>Full Board ใช้เวลานานกว่าและใช้ token มากกว่า เหมาะกับการตัดสินใจสำคัญที่ต้องการหลายมุมมอง</p>
+              </div>
+            </div>
+          )}
       </div>
 
         {/* Language Selector */}
@@ -499,6 +535,23 @@ export default function MeetingPage() {
             )}
           </div>
         </div>
+
+        {selectedAgents.length > 0 && (
+          <div className="mt-6 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">ตัวอย่างผู้เข้าประชุม</h3>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {selectedAgents.map((agent) => (
+                <span
+                  key={agent.id}
+                  className="inline-flex max-w-full items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                >
+                  <span>{agent.emoji}</span>
+                  <span className="truncate">{agent.name}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
     </aside>
   )
 
@@ -597,6 +650,18 @@ export default function MeetingPage() {
                 <p className="text-lg font-medium">พร้อมเริ่มประชุม</p>
                 <p className="text-sm">เลือกผู้เชี่ยวชาญ พิมพ์คำถาม แล้วกด Enter</p>
               </div>
+              <div className="grid w-full max-w-3xl gap-2 sm:grid-cols-3">
+                {PROMPT_SUGGESTIONS.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    onClick={() => setQuestion(suggestion)}
+                    className="rounded-lg border border-gray-200 bg-white p-3 text-left text-sm text-gray-600 transition-colors hover:border-blue-300 hover:text-blue-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"
+                  >
+                    <Lightbulb className="mb-2 h-4 w-4 text-amber-500" />
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -673,6 +738,31 @@ export default function MeetingPage() {
             </div>
           )}
 
+          {!isRunning && meetingId && statusText === "ประชุมเสร็จสิ้น" && (
+            <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">การประชุมนี้มีประโยชน์แค่ไหน?</h3>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">คะแนนนี้จะไปช่วยปรับปรุงอินไซต์และคุณภาพทีม</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      onClick={() => submitRating(star)}
+                      disabled={ratingSubmitted}
+                      className={`rounded p-1 transition-colors ${star <= rating ? "text-amber-400" : "text-gray-300 hover:text-amber-300"}`}
+                      aria-label={`ให้คะแนน ${star} ดาว`}
+                    >
+                      <Star className={`h-5 w-5 ${star <= rating ? "fill-amber-400" : ""}`} />
+                    </button>
+                  ))}
+                  {ratingSubmitted && <span className="ml-2 text-xs text-green-600">ขอบคุณ!</span>}
+                </div>
+              </div>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
 
@@ -716,7 +806,7 @@ export default function MeetingPage() {
               ref={fileInputRef}
               type="file"
               multiple
-              accept=".pdf,.xlsx,.xls,.docx,.csv,.txt,.json,.md"
+              accept=".pdf,.xlsx,.docx,.csv,.txt,.json,.md"
               className="hidden"
               onChange={(e) => {
                 if (e.target.files) {

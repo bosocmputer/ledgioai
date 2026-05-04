@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import {
   Bot, Users, MessageSquare, Brain,
-  Zap, Clock, TrendingUp, ArrowRight,
+  Zap, Clock, TrendingUp, ArrowRight, CheckCircle2, Circle,
 } from "lucide-react"
 import { useWorkspace } from "@/components/providers/workspace-provider"
 import { PageInfo } from "@/components/ui/page-info"
@@ -87,6 +87,34 @@ export default function DashboardPage() {
         { label: "ความจำ", value: overview.memoryFacts, icon: Brain, color: "bg-amber-50 dark:bg-amber-950 text-amber-600", href: "/memory" },
       ]
     : []
+  const onboardingSteps = overview
+    ? [
+        {
+          title: "สร้างผู้เชี่ยวชาญ",
+          description: "อย่างน้อย 1 คนสำหรับ Quick Ask",
+          done: overview.agents > 0,
+          href: "/agents/new",
+        },
+        {
+          title: "จัดทีมที่ปรึกษา",
+          description: "รวมหลายมุมมองสำหรับ Consult / Full Board",
+          done: overview.teams > 0,
+          href: "/teams/new",
+        },
+        {
+          title: "เพิ่มข้อมูลบริษัท",
+          description: "ช่วยให้ AI ตอบตามบริบทองค์กร",
+          done: overview.memoryFacts > 0,
+          href: "/settings",
+        },
+        {
+          title: "เริ่มประชุมแรก",
+          description: "ถามคำถามจริงและเก็บประวัติไว้ใช้อ้างอิง",
+          done: overview.meetings > 0,
+          href: "/meeting",
+        },
+      ]
+    : []
 
   return (
     <div className="space-y-6">
@@ -99,6 +127,42 @@ export default function DashboardPage() {
       <PageInfo id="dashboard">
         เริ่มด้วยการ <strong>สร้างผู้เชี่ยวชาญ</strong> ก่อน — กำหนดบุคลิกและความเชี่ยวชาญของแต่ละคน จากนั้น <strong>จัดทีม</strong> รวมผู้เชี่ยวชาญที่ต้องใช้งานร่วมกัน แล้วเข้า <strong>ห้องประชุม</strong> เพื่อถามคำถาม ระบบจะให้แต่ละคนวิเคราะห์และถกเถียงกันก่อนสรุปคำตอบ
       </PageInfo>
+
+      {overview && onboardingSteps.some((step) => !step.done) && (
+        <div className="rounded-lg border border-blue-100 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-blue-950 dark:text-blue-100">ตั้งค่าเวิร์กสเปซให้พร้อมใช้งาน</h2>
+              <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">ทำตามขั้นตอนสั้น ๆ เพื่อให้ทีม AI มีบริบทและเริ่มประชุมได้ลื่นขึ้น</p>
+            </div>
+            <ButtonLink href={onboardingSteps.find((step) => !step.done)?.href ?? "/meeting"} size="sm">
+              ทำขั้นตอนถัดไป
+              <ArrowRight className="h-4 w-4" />
+            </ButtonLink>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {onboardingSteps.map((step) => (
+              <Link
+                key={step.title}
+                href={step.href}
+                className="rounded-lg border border-blue-100 bg-white p-3 transition-colors hover:border-blue-300 dark:border-blue-900 dark:bg-gray-950"
+              >
+                <div className="flex items-start gap-2">
+                  {step.done ? (
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 text-green-600" />
+                  ) : (
+                    <Circle className="mt-0.5 h-4 w-4 text-blue-400" />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{step.title}</p>
+                    <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{step.description}</p>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

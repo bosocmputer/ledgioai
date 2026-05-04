@@ -4,6 +4,12 @@ import { organization } from "better-auth/plugins"
 import { db } from "@/lib/db"
 
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+  secret:
+    process.env.BETTER_AUTH_SECRET ||
+    process.env.AUTH_SECRET ||
+    "ledgio-build-time-secret-change-in-runtime-env",
+
   database: drizzleAdapter(db, {
     provider: "pg",
   }),
