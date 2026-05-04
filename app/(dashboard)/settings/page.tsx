@@ -6,6 +6,11 @@ import {
   Settings, Users, Shield, Globe, Cpu, Save, Loader2,
   Mail, UserPlus, Crown, Eye, UserCheck, Copy, Check,
 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
+import { Field, FormSection, inputClasses } from "@/components/ui/form-section"
+import { PageHeader } from "@/components/ui/page-header"
 
 // ── Types ──────────────────────────────────────────────
 
@@ -191,32 +196,28 @@ export default function SettingsPage() {
     return (
       <div className="space-y-6">
         <div className="h-8 w-48 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
-        <div className="h-64 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" />
+        <div className="h-64 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />
       </div>
     )
   }
 
   if (!detail) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-gray-500 dark:text-gray-400">
-        <Settings className="h-12 w-12 mb-4" />
-        <p>ไม่พบข้อมูล Workspace — เลือก Workspace ก่อน</p>
-      </div>
+      <EmptyState
+        icon={<Settings className="h-12 w-12" />}
+        title="ไม่พบข้อมูลเวิร์กสเปซ"
+        description="เลือกเวิร์กสเปซก่อนเข้าหน้าตั้งค่า"
+      />
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">ตั้งค่า Workspace</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {detail.name}
-          <span className={`ml-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${roleLabels[detail.role]?.color ?? "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"}`}>
-            {roleLabels[detail.role]?.label ?? detail.role}
-          </span>
-        </p>
-      </div>
+      <PageHeader
+        title="ตั้งค่าเวิร์กสเปซ"
+        description={detail.name}
+        actions={<Badge className={roleLabels[detail.role]?.color}>{roleLabels[detail.role]?.label ?? detail.role}</Badge>}
+      />
 
       {/* Workspace ID */}
       <div className="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 px-4 py-2.5 text-sm">
@@ -249,35 +250,32 @@ export default function SettingsPage() {
 
       {/* Tab: General */}
       {tab === "general" && (
-        <div className="space-y-6 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">ตั้งค่า LLM เริ่มต้น</h2>
+        <FormSection title="ตั้งค่า LLM เริ่มต้น" description="ค่าเริ่มต้นนี้ใช้เป็นแนวทางสำหรับผู้เชี่ยวชาญใหม่และ workflow ในเวิร์กสเปซ">
 
           <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Provider เริ่มต้น</label>
+            <Field label="Provider เริ่มต้น">
               <select
                 value={defaultProvider}
                 onChange={(e) => setDefaultProvider(e.target.value)}
                 disabled={!isAdmin}
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-gray-50 dark:bg-gray-950"
+                className={inputClasses}
               >
                 <option value="">— ไม่กำหนด —</option>
                 {providerOptions.map((p) => (
                   <option key={p.value} value={p.value}>{p.label}</option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">Model เริ่มต้น</label>
+            </Field>
+            <Field label="Model เริ่มต้น">
               <input
                 type="text"
                 value={defaultModel}
                 onChange={(e) => setDefaultModel(e.target.value)}
                 disabled={!isAdmin}
                 placeholder="เช่น claude-sonnet-4-20250514"
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none disabled:bg-gray-50 dark:bg-gray-950"
+                className={inputClasses}
               />
-            </div>
+            </Field>
           </div>
 
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 pt-2">ขีดจำกัด</h2>
@@ -340,10 +338,9 @@ export default function SettingsPage() {
 
           {isAdmin && (
             <div className="flex justify-end pt-2">
-              <button
+              <Button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {saving ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -353,10 +350,10 @@ export default function SettingsPage() {
                   <Save className="h-4 w-4" />
                 )}
                 {saved ? "บันทึกแล้ว" : "บันทึก"}
-              </button>
+              </Button>
             </div>
           )}
-        </div>
+        </FormSection>
       )}
 
       {/* Tab: Members */}
@@ -450,7 +447,7 @@ export default function SettingsPage() {
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6 space-y-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Web Search API Keys</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            ใส่ API Key เพื่อให้ Agents ค้นหาข้อมูลจากเว็บได้ — key จะถูกเข้ารหัส AES-256-GCM
+            ใส่ API Key เพื่อให้ผู้เชี่ยวชาญค้นหาข้อมูลจากเว็บได้ — key จะถูกเข้ารหัส AES-256-GCM
           </p>
 
           <div className="space-y-4">

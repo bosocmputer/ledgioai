@@ -23,6 +23,7 @@ import {
   detectChairman,
   sortBySeniority,
 } from "../prompts"
+import { normalizeUsage } from "../usage"
 
 type AgentRow = typeof agents.$inferSelect
 
@@ -89,7 +90,7 @@ export async function runFullBoard(
         : buildAnalysisPrompt(question)
 
       const result = await mastraAgent.generate([{ role: "user", content: prompt }])
-      const tokensUsed = result.usage?.totalTokens ?? 0
+      const { totalTokens: tokensUsed } = normalizeUsage(result.usage)
       totalTokens += tokensUsed
 
       send("message", {
@@ -126,7 +127,7 @@ export async function runFullBoard(
 
     const prompt = buildFindingsPrompt(question, analysis.content, agentRow)
     const result = await mastraAgent.generate([{ role: "user", content: prompt }])
-    const tokensUsed = result.usage?.totalTokens ?? 0
+    const { totalTokens: tokensUsed } = normalizeUsage(result.usage)
     totalTokens += tokensUsed
 
     send("message", {
@@ -163,7 +164,7 @@ export async function runFullBoard(
 
     const prompt = buildBoardDiscussionPrompt(question, allFindings, agentRow)
     const result = await mastraAgent.generate([{ role: "user", content: prompt }])
-    const tokensUsed = result.usage?.totalTokens ?? 0
+    const { totalTokens: tokensUsed } = normalizeUsage(result.usage)
     totalTokens += tokensUsed
 
     send("message", {
@@ -208,7 +209,7 @@ export async function runFullBoard(
   }
 
   const synthesisOutput = await synthesisResult.getFullOutput()
-  const synthTokens = synthesisOutput.usage?.totalTokens ?? 0
+  const { totalTokens: synthTokens } = normalizeUsage(synthesisOutput.usage)
   totalTokens += synthTokens
 
   send("message", {

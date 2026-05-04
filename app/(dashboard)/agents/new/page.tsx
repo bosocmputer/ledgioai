@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { ArrowLeft, Sparkles } from "lucide-react"
+import { ArrowLeft, Brain, Cpu, Save, Settings2, Sparkles, UserRound } from "lucide-react"
+import { Button, ButtonLink } from "@/components/ui/button"
+import { FormSection, Field, inputClasses, textareaClasses } from "@/components/ui/form-section"
+import { PageHeader } from "@/components/ui/page-header"
 
 interface Template {
   id: string
@@ -108,44 +110,37 @@ export default function NewAgentPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link
-          href="/agents"
-          className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:bg-gray-800 hover:text-gray-600 dark:text-gray-400"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">สร้าง Agent ใหม่</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            สร้างผู้เชี่ยวชาญ AI จากเทมเพลตหรือตั้งค่าเอง
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="สร้างผู้เชี่ยวชาญใหม่"
+        description="เลือกจากเทมเพลตหรือกำหนดบุคลิก ความถนัด และโมเดลเอง"
+        actions={
+          <ButtonLink href="/agents" variant="secondary">
+            <ArrowLeft className="h-4 w-4" />
+            กลับ
+          </ButtonLink>
+        }
+      />
 
       {/* Template Gallery */}
       {showTemplates && templates.length > 0 && (
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-amber-500" />
-              <h2 className="font-semibold text-gray-900 dark:text-gray-100">เลือกเทมเพลต</h2>
-            </div>
-            <button
-              onClick={() => setShowTemplates(false)}
-              className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300"
-            >
-              สร้างเอง →
-            </button>
-          </div>
+        <FormSection
+          title="เริ่มจากเทมเพลต"
+          description="เติมบทบาท prompt และโมเดลแนะนำให้พร้อมแก้ต่อ"
+          icon={<Sparkles className="h-5 w-5 text-amber-500" />}
+          actions={
+            <Button variant="ghost" size="sm" onClick={() => setShowTemplates(false)}>
+              สร้างเอง
+            </Button>
+          }
+        >
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {templates.map((tpl) => (
               <button
                 key={tpl.id}
                 onClick={() => applyTemplate(tpl)}
-                className="flex flex-col items-center rounded-lg border border-gray-200 dark:border-gray-700 p-4 text-center hover:border-blue-300 hover:bg-blue-50 dark:bg-blue-950 transition-colors"
+                className="flex min-h-36 flex-col items-center rounded-lg border border-gray-200 p-4 text-center transition-colors hover:border-blue-300 hover:bg-blue-50 dark:border-gray-700 dark:hover:bg-blue-950"
               >
                 <span className="text-3xl">{tpl.emoji}</span>
                 <span className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">
@@ -155,62 +150,56 @@ export default function NewAgentPage() {
               </button>
             ))}
           </div>
-        </div>
+        </FormSection>
       )}
 
       {/* Agent Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Identity */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
-          <h2 className="mb-4 font-semibold text-gray-900 dark:text-gray-100">Identity</h2>
+        <FormSection title="ตัวตน" description="ชื่อ บทบาท และภาพจำที่จะแสดงในห้องประชุม" icon={<UserRound className="h-5 w-5" />}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2 flex gap-4">
-              <div className="w-24">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Emoji</label>
+              <Field label="Emoji" className="w-24">
                 <input
                   name="emoji"
                   value={form.emoji}
                   onChange={handleChange}
-                  className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-center text-2xl focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className={`${inputClasses} text-center text-2xl`}
                 />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">ชื่อ Agent</label>
+              </Field>
+              <Field label="ชื่อผู้เชี่ยวชาญ" className="flex-1">
                 <input
                   name="name"
                   value={form.name}
                   onChange={handleChange}
                   required
                   placeholder="เช่น สมชาย นักบัญชี"
-                  className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className={inputClasses}
                 />
-              </div>
+              </Field>
             </div>
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">บทบาท</label>
+            <Field label="บทบาท" className="sm:col-span-2">
               <input
                 name="role"
                 value={form.role}
                 onChange={handleChange}
                 required
                 placeholder="เช่น ผู้เชี่ยวชาญภาษีอากร"
-                className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={inputClasses}
               />
-            </div>
+            </Field>
           </div>
-        </div>
+        </FormSection>
 
         {/* LLM Config */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
-          <h2 className="mb-4 font-semibold text-gray-900 dark:text-gray-100">LLM Configuration</h2>
+        <FormSection title="โมเดลและ API" description="ตั้งค่า provider, model และ key ที่จะใช้ตอบในห้องประชุม" icon={<Cpu className="h-5 w-5" />}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Provider</label>
+            <Field label="Provider">
               <select
                 name="provider"
                 value={form.provider}
                 onChange={handleChange}
-                className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={inputClasses}
               >
                 {PROVIDERS.map((p) => (
                   <option key={p.value} value={p.value}>
@@ -218,20 +207,18 @@ export default function NewAgentPage() {
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Model</label>
+            </Field>
+            <Field label="Model">
               <input
                 name="model"
                 value={form.model}
                 onChange={handleChange}
                 required
                 placeholder="เช่น claude-sonnet-4-6"
-                className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={inputClasses}
               />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">API Key</label>
+            </Field>
+            <Field label="API Key" description="API Key จะถูกเข้ารหัส AES-256-GCM ก่อนบันทึก" className="sm:col-span-2">
               <input
                 name="apiKey"
                 type="password"
@@ -239,30 +226,25 @@ export default function NewAgentPage() {
                 onChange={handleChange}
                 required
                 placeholder="sk-..."
-                className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-sm font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={`${inputClasses} font-mono`}
               />
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                API Key จะถูกเข้ารหัส AES-256-GCM ก่อนบันทึก
-              </p>
-            </div>
+            </Field>
             {(form.provider === "ollama" || form.provider === "custom") && (
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Base URL</label>
+              <Field label="Base URL" className="sm:col-span-2">
                 <input
                   name="baseUrl"
                   value={form.baseUrl}
                   onChange={handleChange}
                   placeholder="http://localhost:11434"
-                  className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className={inputClasses}
                 />
-              </div>
+              </Field>
             )}
           </div>
-        </div>
+        </FormSection>
 
         {/* Soul (System Prompt) */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
-          <h2 className="mb-4 font-semibold text-gray-900 dark:text-gray-100">Soul (System Prompt)</h2>
+        <FormSection title="Soul / System Prompt" description="นิสัย วิธีคิด ขอบเขตความเชี่ยวชาญ และรูปแบบคำตอบ" icon={<Brain className="h-5 w-5" />}>
           <textarea
             name="soul"
             value={form.soul}
@@ -270,13 +252,12 @@ export default function NewAgentPage() {
             required
             rows={8}
             placeholder="คุณคือผู้เชี่ยวชาญด้าน..."
-            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={textareaClasses}
           />
-        </div>
+        </FormSection>
 
         {/* Advanced */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
-          <h2 className="mb-4 font-semibold text-gray-900 dark:text-gray-100">Advanced</h2>
+        <FormSection title="การทำงานขั้นสูง" icon={<Settings2 className="h-5 w-5" />}>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -313,7 +294,7 @@ export default function NewAgentPage() {
               </div>
             </div>
           </div>
-        </div>
+        </FormSection>
 
         {/* Error */}
         {error && (
@@ -322,19 +303,16 @@ export default function NewAgentPage() {
 
         {/* Submit */}
         <div className="flex justify-end gap-3">
-          <Link
-            href="/agents"
-            className="rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:bg-gray-950"
-          >
+          <ButtonLink href="/agents" variant="secondary">
             ยกเลิก
-          </Link>
-          <button
+          </ButtonLink>
+          <Button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {saving ? "กำลังบันทึก..." : "สร้าง Agent"}
-          </button>
+            <Save className="h-4 w-4" />
+            {saving ? "กำลังบันทึก..." : "สร้างผู้เชี่ยวชาญ"}
+          </Button>
         </div>
       </form>
     </div>

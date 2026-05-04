@@ -1,363 +1,165 @@
 # LEDGIO AI — Multi-Tenant Architecture
 
-> Multi-Company / Multi-Tenant design สำหรับขายเป็นแพ็คเกจให้เจ้าของธุรกิจหลายบริษัท
+> Current workspace isolation model. Updated May 2026 from the actual Better Auth + Drizzle implementation.
 
-## 🎯 Business Requirement
+## Terminology
 
-- ผู้ใช้แต่ละคนสร้างได้ **หลายบริษัท** (Company)
-- แต่ละบริษัทมี agents, teams, sessions, memory, stats, settings แยกอิสระ
-- ผู้ใช้สลับบริษัทได้ทันที (Company Switcher)
-- เจ้าของธุรกิจเชิญพนักงานเข้าบริษัทได้ (Invitation)
-- ข้อมูลข้ามบริษัทมองไม่เห็นกัน (Data Isolation)
+| Product term | Code/schema term | Notes |
+| --- | --- | --- |
+| Workspace | `organization` | Better Auth organization table |
+| Workspace member | `member` | Better Auth member table |
+| Active workspace | `session.activeOrganizationId` | Tenant id used by API routes |
+| Workspace role | `member.role` | `owner`, `admin`, `member`, `viewer` |
 
-## 🏗️ Tenancy Strategy
+Older planning docs used `Company` and `company_id`. The current app uses **Workspace** and `workspace_id`.
 
-**Shared Database, Row-Level Isolation** — ข้อมูลทุกบริษัทอยู่ใน database เดียว แต่แยกด้วย `company_id` column
+## Tenancy Strategy
 
-```
-┌─────────────────────────────────────────┐
-│           PostgreSQL Database            │
-│                                         │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ │
-│  │Company A │ │Company B │ │Company C │ │
-│  │agents: 5 │ │agents: 3 │ │agents: 8 │ │
-│  │teams: 2  │ │teams: 1  │ │teams: 3  │ │
-│  │sessions:N│ │sessions:N│ │sessions:N│ │
-│  └──────────┘ └──────────┘ └──────────┘ │
-│                                         │
-│  All rows filtered by company_id        │
-└─────────────────────────────────────────┘
-```
+LEDGIO AI uses one PostgreSQL database with row-level workspace isolation:
 
-### Why Shared DB?
-- Server มี RAM 7.6 GB — ไม่เหมาะกับ database-per-tenant
-- ง่ายในการ manage, backup, migrate
-- เพียงพอสำหรับ 100+ companies ใน Single Instance
-- เมื่อ scale ถึงจุด สามารถ shard by company_id ภายหลัง
-
-## 📊 Data Hierarchy
-
-```
-User (ผู้ใช้)
- ├── Company A (owner)
- │    ├── Agents (5 ตัว)
- │    │    └── Knowledge (เอกสารต่อ agent)
- │    ├── Teams (2 ทีม)
- │    │    └── TeamAgents (junction)
- │    ├── Research Sessions
- │    │    └── Research Messages
- │    ├── Memory Facts
- │    ├── Agent Stats
- │    └── Company Settings (API keys, preferences)
- │
- ├── Company B (owner)
- │    ├── Agents (3 ตัว)
- │    └── ... (same structure)
- │
- └── Company C (member — invited by someone else)
-      └── ... (read/write based on role)
+```txt
+PostgreSQL
+├── Better Auth global/user tables
+│   ├── user
+│   ├── session
+│   ├── account
+│   ├── verification
+│   ├── organization   <- Workspace
+│   ├── member         <- User-to-workspace role
+│   └── invitation
+│
+└── LEDGIO business tables scoped by workspace_id
+    ├── agents
+    ├── agent_knowledge
+    ├── teams
+    ├── team_agents
+    ├── meetings
+    ├── meeting_messages
+    ├── memory_facts
+    ├── agent_stats
+    ├── workspace_settings
+    ├── audit_logs
+    ├── meeting_templates
+    └── scheduled_meetings
 ```
 
-## 🔄 Company Switching Flow
+This keeps operations simple on the single production server while still allowing many customer workspaces.
 
-### UI Flow
-1. **Sidebar** แสดง company switcher (dropdown/modal)
-2. User เลือกบริษัท → POST `/api/companies/switch`
-3. Server set cookie `ledgio-active-company={companyId}`
-4. Page reload / client state update
-5. ทุก subsequent request ใช้ companyId จาก cookie
+## Active Workspace Flow
 
-### Cookie-Based Active Company
+1. User logs in through Better Auth.
+2. `WorkspaceProvider` loads the user's organizations.
+3. `WorkspaceGuard` ensures there is an active workspace and can create a default one on first login.
+4. The active workspace id is stored by Better Auth as `session.activeOrganizationId`.
+5. API routes read that id through `requireAuth()` or `requirePermission()`.
 
-```typescript
-// POST /api/companies/switch
-export async function POST(req: Request) {
-  const { companyId } = await req.json();
-  const user = await requireAuth();
-  
-  // Verify user has access to this company
-  await requireCompanyAccess(companyId, "viewer");
-  
-  // Set cookie
-  const response = Response.json({ ok: true });
-  response.headers.set("Set-Cookie", 
-    `ledgio-active-company=${companyId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${60*60*24*365}`
-  );
-  return response;
-}
+Server helper:
+
+```ts
+const session = await auth.api.getSession({ headers: request.headers })
+const workspaceId = (session.session as Record<string, unknown>).activeOrganizationId
 ```
 
-### Context Injection Pattern
+Query pattern:
 
-ทุก API route ใช้ helper `getCompanyContext()` เพื่อดึง userId + companyId:
-
-```typescript
-// ตัวอย่าง: GET /api/agents
-export async function GET() {
-  const { userId, companyId } = await getCompanyContext();
-  
-  const agents = await db
+```ts
+export async function getAgentById(agentId: string, workspaceId: string) {
+  return db
     .select()
-    .from(agentsTable)
-    .where(
-      and(
-        eq(agentsTable.companyId, companyId),
-        isNull(agentsTable.deletedAt)
-      )
-    );
-  
-  return Response.json(agents);
+    .from(agents)
+    .where(and(
+      eq(agents.id, agentId),
+      eq(agents.workspaceId, workspaceId),
+      isNull(agents.deletedAt),
+    ))
+    .limit(1)
 }
 ```
 
-## 👥 User-Company Relationships
+## Data Isolation Rules
 
-### Create Company
+Critical rules for every feature:
 
-```typescript
-// POST /api/companies
-export async function POST(req: Request) {
-  const user = await requireAuth();
-  const body = await req.json();
-  
-  // Limit: max 10 companies per user (configurable)
-  const userCompanyCount = await db
-    .select({ count: count() })
-    .from(userCompanies)
-    .where(eq(userCompanies.userId, user.id));
-  
-  if (userCompanyCount[0].count >= 10) {
-    return Response.json({ error: "Maximum companies reached" }, { status: 400 });
-  }
-  
-  const result = await db.transaction(async (tx) => {
-    const [company] = await tx.insert(companies).values({
-      name: body.name,
-      businessType: body.businessType,
-      accountingStandard: body.accountingStandard,
-      fiscalYear: body.fiscalYear,
-      employeeCount: body.employeeCount,
-      notes: body.notes,
-    }).returning();
-    
-    await tx.insert(userCompanies).values({
-      userId: user.id,
-      companyId: company.id,
-      role: "owner",
-      isDefault: false,
-    });
-    
-    // Create default company settings
-    await tx.insert(companySettings).values({
-      companyId: company.id,
-    });
-    
-    return company;
-  });
-  
-  return Response.json(result, { status: 201 });
-}
-```
+- Never read or mutate business data by `id` alone.
+- Always include `workspaceId` in route-to-query contracts.
+- Check `deletedAt` for soft-deletable records.
+- Strip secrets like `apiKeyEncrypted` before returning JSON.
+- For nested objects, verify the parent belongs to the active workspace before operating on children.
 
-### Invite Member
+Scoped entities:
 
-```typescript
-// POST /api/companies/:id/invite
-// Body: { email: string, role: "admin" | "member" | "viewer" }
-export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const { user } = await requireCompanyAccess(params.id, "admin");
-  const { email, role } = await req.json();
-  
-  // Find or create placeholder user
-  let [invitee] = await db.select().from(users)
-    .where(eq(users.email, email.toLowerCase()))
-    .limit(1);
-  
-  if (!invitee) {
-    // Create inactive user — will be activated on registration
-    [invitee] = await db.insert(users).values({
-      email: email.toLowerCase(),
-      isActive: false,
-    }).returning();
-  }
-  
-  // Add to company
-  await db.insert(userCompanies).values({
-    userId: invitee.id,
-    companyId: params.id,
-    role: role,
-    isDefault: false,
-  }).onConflictDoNothing();
-  
-  // TODO: Send invitation email
-  
-  return Response.json({ ok: true });
-}
-```
+| Entity | Scope |
+| --- | --- |
+| Agents | `workspace_id` |
+| Agent knowledge | `workspace_id` + `agent_id` |
+| Teams | `workspace_id` |
+| Team agents | via team and agent workspace ownership |
+| Meetings | `workspace_id` + `user_id` |
+| Meeting messages | `workspace_id` + `meeting_id` |
+| Memory facts | `workspace_id` |
+| Agent stats | `workspace_id` + `agent_id` |
+| Workspace settings | `workspace_id` |
+| Audit logs | `workspace_id` |
+| Meeting templates | global or `workspace_id` |
+| Scheduled meetings | `workspace_id` |
 
-### List User's Companies
+Global entities:
 
-```typescript
-// GET /api/companies
-export async function GET() {
-  const user = await requireAuth();
-  
-  const result = await db
-    .select({
-      company: companies,
-      role: userCompanies.role,
-      isDefault: userCompanies.isDefault,
-    })
-    .from(userCompanies)
-    .innerJoin(companies, eq(userCompanies.companyId, companies.id))
-    .where(
-      and(
-        eq(userCompanies.userId, user.id),
-        isNull(companies.deletedAt)
-      )
-    )
-    .orderBy(desc(userCompanies.isDefault), asc(companies.name));
-  
-  return Response.json(result);
-}
-```
+| Entity | Why |
+| --- | --- |
+| `user` | A user can belong to many workspaces |
+| `account` | Auth provider identity belongs to user |
+| `session` | Auth session belongs to user, with active workspace pointer |
+| `organization` | Workspace record itself |
+| `member` | Membership bridge |
+| `invitation` | Pending workspace invite |
 
-## 🔒 Data Isolation Rules
+## Roles and Permissions
 
-### CRITICAL — Every Query Must Be Scoped
+Roles are stored in Better Auth `member.role`. Permission enforcement currently lives in [lib/auth/permissions.ts](/Users/nontawatwongnuk/dev_bos/ledgioai/lib/auth/permissions.ts).
 
-```typescript
-// ❌ WRONG — No company filter
-const agents = await db.select().from(agentsTable);
+| Action | owner | admin | member | viewer |
+| --- | :---: | :---: | :---: | :---: |
+| Read agents/teams/memory/settings | yes | yes | yes | yes |
+| Start meeting | yes | yes | yes | no |
+| Create/update agents | yes | yes | yes, currently | no |
+| Delete agents | yes | yes | no | no |
+| Create/update memory | yes | yes | yes, currently | no |
+| Invite/read members | yes | yes | read only | read only |
 
-// ✅ CORRECT — Always filter by companyId
-const agents = await db.select().from(agentsTable)
-  .where(eq(agentsTable.companyId, companyId));
-```
+Note: `member` is intentionally permissive in the current code. Tightening that role is a product decision, not a database limitation.
 
-### Scoped Entities (ต้องมี companyId ทุก query)
+## Workspace UI Surface
 
-| Entity | Scope Level |
-|--------|------------|
-| Agents | per company |
-| Agent Knowledge | per company + per agent |
-| Teams | per company |
-| Team Agents | per company (via team) |
-| Research Sessions | per company + per user |
-| Research Messages | per session (via session scope) |
-| Memory Facts | per company |
-| Agent Stats | per company + per agent |
-| Company Settings | per company |
-| Audit Logs | per company |
+Current workspace-related UI:
 
-### Global Entities (ไม่มี companyId)
+- Sidebar workspace switcher
+- Workspace list page at `/workspaces`
+- Workspace guard that creates/selects a workspace
+- Settings page foundation
 
-| Entity | Why Global |
-|--------|-----------|
-| Users | User สามารถอยู่หลาย company |
-| Accounts (OAuth) | Linked to user, not company |
-| Sessions (Auth) | Linked to user, not company |
+Important UX implication: workspace identity should be visible and easy to switch, because almost every screen is scoped by the active workspace.
 
-## 🎨 Company Switcher UI
+## Production Snapshot
 
-### Sidebar Component
+As of the latest server check:
 
-```tsx
-// components/company-switcher.tsx
-function CompanySwitcher() {
-  const [companies, setCompanies] = useState([]);
-  const [activeCompany, setActiveCompany] = useState(null);
-  
-  return (
-    <div className="company-switcher">
-      {/* Current company display */}
-      <button onClick={() => setOpen(!open)}>
-        <span>{activeCompany?.name}</span>
-        <ChevronDown />
-      </button>
-      
-      {/* Dropdown */}
-      {open && (
-        <div className="dropdown">
-          {companies.map(c => (
-            <button key={c.id} onClick={() => switchCompany(c.id)}>
-              {c.name}
-              {c.role === "owner" && <Crown size={12} />}
-            </button>
-          ))}
-          <hr />
-          <button onClick={() => router.push("/companies/new")}>
-            <Plus /> สร้างบริษัทใหม่
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-```
+| Metric | Count |
+| --- | ---: |
+| Users | 3 |
+| Workspaces | 3 |
+| Agents | 7 |
+| Teams | 2 |
+| Meetings | 9 |
+| Agent templates | 8 |
+| Meeting templates | 0 |
+| Memory facts | 6 |
 
-### Sidebar Layout
+## Future Scale Path
 
-```
-┌─────────────────────┐
-│ 🏢 สำนักงาน A  ▼   │ ← Company Switcher
-├─────────────────────┤
-│ 🏠 Dashboard        │
-│ 💬 Meeting Room     │
-│ 🤖 Agents           │
-│ 👥 Teams            │
-│ 📊 Statistics       │
-│ 📋 History          │
-│ ⚙️ Settings         │
-├─────────────────────┤
-│ 👤 User Name        │
-│ 🚪 Logout           │
-└─────────────────────┘
-```
+The current shared database model is suitable for the single-server deployment. If the product grows beyond one server/database, the natural next steps are:
 
-## 🔄 Cross-Company Queries (Future)
-
-สำหรับเจ้าของหลายบริษัท อาจต้องการ:
-- **สรุป token usage รวมทุกบริษัท**
-- **ค้นหา session ข้ามบริษัท**
-
-Implementation:
-```typescript
-// GET /api/dashboard/overview?scope=all
-// Returns merged stats from all companies user has access to
-const userCompanyIds = await db.select({ companyId: userCompanies.companyId })
-  .from(userCompanies)
-  .where(eq(userCompanies.userId, user.id));
-
-const stats = await db.select()
-  .from(agentStats)
-  .where(inArray(agentStats.companyId, userCompanyIds.map(c => c.companyId)));
-```
-
-## ⚠️ Migration Strategy from BossBoard
-
-BossBoard ปัจจุบันไม่มี company concept — ทุกอย่าง global:
-
-1. **สร้าง "Default Company"** สำหรับ first user
-2. **ย้ายข้อมูลเดิมทั้งหมด** เข้า Default Company
-3. **ผู้ใช้สร้างบริษัทใหม่** → agents/teams ว่าง, ต้องตั้งค่าใหม่
-4. **ไม่ copy agents ข้ามบริษัท** — แต่สามารถ "clone agent" ได้ (future feature)
-
-## 📐 Database Migration Example
-
-```sql
--- Add company_id to agents table
-ALTER TABLE agents ADD COLUMN company_id UUID REFERENCES companies(id);
-
--- Create default company for migration
-INSERT INTO companies (id, name) VALUES ('default-uuid', 'Default Company');
-
--- Migrate existing agents
-UPDATE agents SET company_id = 'default-uuid' WHERE company_id IS NULL;
-
--- Make company_id NOT NULL after migration
-ALTER TABLE agents ALTER COLUMN company_id SET NOT NULL;
-
--- Add index
-CREATE INDEX agents_company_idx ON agents(company_id);
-```
+1. Add stronger indexes around high-volume workspace queries.
+2. Add per-workspace quotas and billing metadata.
+3. Add audit tooling for cross-workspace admin views.
+4. Later shard by `workspace_id` only if usage demands it.

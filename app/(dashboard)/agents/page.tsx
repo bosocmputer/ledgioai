@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Bot, Plus, Search, Trash2, Pencil, Zap } from "lucide-react"
+import { Bot, Plus, Trash2, Pencil, Zap } from "lucide-react"
 import { useWorkspace } from "@/components/providers/workspace-provider"
 import { AgentPreviewModal } from "@/components/agents/agent-preview-modal"
+import { PageInfo } from "@/components/ui/page-info"
+import { Badge } from "@/components/ui/badge"
+import { ButtonLink } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
+import { PageHeader } from "@/components/ui/page-header"
+import { SearchInput } from "@/components/ui/search-input"
 
 interface Agent {
   id: string
@@ -58,34 +64,27 @@ export default function AgentsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Agents</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            ผู้เชี่ยวชาญ AI ของคุณ ({agents.length} คน)
-          </p>
-        </div>
-        <Link
-          href="/agents/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          สร้าง Agent
-        </Link>
-      </div>
+      <PageHeader
+        title="ผู้เชี่ยวชาญ"
+        description={`ผู้เชี่ยวชาญ AI ของเวิร์กสเปซนี้ (${agents.length} คน)`}
+        actions={
+          <ButtonLink href="/agents/new">
+            <Plus className="h-4 w-4" />
+            สร้างผู้เชี่ยวชาญ
+          </ButtonLink>
+        }
+      />
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          placeholder="ค้นหา agent..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-      </div>
+      <PageInfo id="agents">
+        Agent คือผู้เชี่ยวชาญ AI ที่คุณกำหนดเองได้ทั้งหมด — ตั้งแต่บุคลิก ความเชี่ยวชาญ ไปจนถึง LLM ที่ใช้ขับเคลื่อน เช่น สร้าง <strong>"ที่ปรึกษาภาษี VAT"</strong> ที่รู้กฎหมายภาษีอากรลึกกว่า ChatGPT ทั่วไป เพราะคุณเป็นคนเขียน soul และอัปโหลด knowledge base ให้เอง กดไอคอน ⚡ เพื่อทดสอบ agent ก่อนนำไปใช้งานจริง
+      </PageInfo>
+
+      <SearchInput
+        placeholder="ค้นหาชื่อหรือบทบาทผู้เชี่ยวชาญ..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        onClear={() => setSearch("")}
+      />
 
       {/* Agent Cards */}
       {loading ? (
@@ -107,26 +106,19 @@ export default function AgentsPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 py-12 text-center">
-          <Bot className="mx-auto h-12 w-12 text-gray-300" />
-          <h3 className="mt-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-            {agents.length === 0 ? "ยังไม่มี Agent" : "ไม่พบผลลัพธ์"}
-          </h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {agents.length === 0
-              ? "สร้างผู้เชี่ยวชาญ AI คนแรกของคุณ"
-              : "ลองค้นหาด้วยคำอื่น"}
-          </p>
-          {agents.length === 0 && (
-            <Link
-              href="/agents/new"
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4" />
-              สร้าง Agent
-            </Link>
-          )}
-        </div>
+        <EmptyState
+          icon={<Bot className="h-12 w-12" />}
+          title={agents.length === 0 ? "ยังไม่มีผู้เชี่ยวชาญ" : "ไม่พบผลลัพธ์"}
+          description={agents.length === 0 ? "สร้างผู้เชี่ยวชาญ AI คนแรกเพื่อเริ่มถามงานจริง" : "ลองค้นหาด้วยชื่อหรือบทบาทอื่น"}
+          action={
+            agents.length === 0 ? (
+              <ButtonLink href="/agents/new">
+                <Plus className="h-4 w-4" />
+                สร้างผู้เชี่ยวชาญ
+              </ButtonLink>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((agent) => (
@@ -135,23 +127,23 @@ export default function AgentsPage() {
               className="group relative rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 transition-shadow hover:shadow-md"
             >
               {/* Actions */}
-              <div className="absolute right-3 top-3 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="absolute right-3 top-3 flex gap-1 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
                 <button
                   onClick={() => setPreviewAgent(agent)}
-                  className="rounded-lg p-1.5 text-gray-400 hover:bg-amber-50 dark:bg-amber-950 hover:text-amber-600"
+                  className="rounded-lg p-1.5 text-gray-400 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-950"
                   title="ทดสอบ Agent"
                 >
                   <Zap className="h-4 w-4" />
                 </button>
                 <Link
                   href={`/agents/${agent.id}`}
-                  className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:bg-gray-800 hover:text-gray-600 dark:text-gray-400"
+                  className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
                 >
                   <Pencil className="h-4 w-4" />
                 </Link>
                 <button
                   onClick={() => handleDelete(agent.id)}
-                  className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 dark:bg-red-950 hover:text-red-600"
+                  className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -173,26 +165,18 @@ export default function AgentsPage() {
 
                 {/* Meta */}
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="inline-flex items-center rounded-full bg-blue-50 dark:bg-blue-950 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-                    {agent.provider}
-                  </span>
-                  <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:text-gray-400">
-                    {agent.model}
-                  </span>
+                  <Badge tone="blue">{agent.provider}</Badge>
+                  <Badge>{agent.model}</Badge>
                   {agent.hasApiKey && (
-                    <span className="inline-flex items-center rounded-full bg-green-50 dark:bg-green-950 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-300">
-                      🔑 API Key
-                    </span>
+                    <Badge tone="green">API key</Badge>
                   )}
                   {agent.seniority != null && agent.seniority > 0 && (
-                    <span className="inline-flex items-center rounded-full bg-amber-50 dark:bg-amber-950 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300" title={`อาวุโส ${agent.seniority}/10`}>
+                    <Badge tone="amber" title={`อาวุโส ${agent.seniority}/10`}>
                       {"⭐".repeat(Math.min(agent.seniority, 5))}
-                    </span>
+                    </Badge>
                   )}
                   {!agent.isActive && (
-                    <span className="inline-flex items-center rounded-full bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">
-                      ปิดใช้งาน
-                    </span>
+                    <Badge>ปิดใช้งาน</Badge>
                   )}
                 </div>
               </Link>

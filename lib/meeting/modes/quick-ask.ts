@@ -8,6 +8,7 @@ import type { MeetingContext } from "../context"
 import type { SSESender } from "../sse"
 import { createMastraAgent } from "@/lib/mastra"
 import { buildSystemPrompt, buildQuickAskMessage } from "../prompts"
+import { normalizeUsage } from "../usage"
 
 type AgentRow = typeof agents.$inferSelect
 
@@ -45,9 +46,7 @@ export async function runQuickAsk(
 
   // Get full output for token usage
   const output = await result.getFullOutput()
-  const inputTokens = output.usage?.promptTokens ?? 0
-  const outputTokens = output.usage?.completionTokens ?? 0
-  const tokensUsed = output.usage?.totalTokens ?? (inputTokens + outputTokens)
+  const { inputTokens, outputTokens, totalTokens: tokensUsed } = normalizeUsage(output.usage)
 
   send("message", {
     agentId: agentRow.id,

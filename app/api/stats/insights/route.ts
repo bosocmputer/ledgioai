@@ -1,7 +1,8 @@
 import { requireAuth } from "@/lib/auth/helpers"
 import { db } from "@/lib/db"
-import { meetings, agents } from "@/lib/db/schema"
+import { meetings, agents, agentStats } from "@/lib/db/schema"
 import { eq, and, sql, gte, desc, isNull } from "drizzle-orm"
+import { calculateCost } from "@/lib/cost"
 
 export async function GET(request: Request) {
   try {
@@ -94,6 +95,41 @@ export async function GET(request: Request) {
       console.error("agentCount error:", e)
     }
 
+    // ── Cost Calculation ──────────────────────────────────
+    // Join agentStats with agents to get provider/model, then calculate cost
+    let totalCostUsd = 0
+    try {
+      const statsWithAgent = await db
+        .select({
+          provider: agents.provider,
+          model: agents.model,
+          inputTokens: sql<number>`sum(${agentStats.inputTokens})::int`,
+          outputTokens: sql<number>`sum(${agentStats.outputTokens})::int`,
+          cacheReadTokens: sql<number>`sum(${agentStats.cacheReadTokens})::int`,
+        })
+        .from(agentStats)
+        .innerJoin(agents, eq(agents.id, agentStats.agentId))
+        .where(
+          and(
+            eq(agentStats.workspaceId, workspaceId),
+            gte(agentStats.date, thirtyDaysAgo.toISOString().slice(0, 10)),
+          ),
+        )
+        .groupBy(agents.provider, agents.model)
+
+      for (const row of statsWithAgent) {
+        totalCostUsd += calculateCost(
+          row.provider,
+          row.model,
+          row.inputTokens ?? 0,
+          row.outputTokens ?? 0,
+          row.cacheReadTokens ?? 0,
+        )
+      }
+    } catch (e) {
+      console.error("costCalc error:", e)
+    }
+
     return Response.json({
       data: {
         meetingsByDay,
@@ -102,6 +138,7 @@ export async function GET(request: Request) {
         tokensByDay,
         topQuestions,
         agentCount: (agentCount as Array<{ count: number }>)[0]?.count ?? 0,
+        totalCostUsd,
       },
     })
   } catch (error) {
@@ -114,6 +151,7 @@ export async function GET(request: Request) {
         tokensByDay: [],
         topQuestions: [],
         agentCount: 0,
+        totalCostUsd: 0,
       },
     })
   }

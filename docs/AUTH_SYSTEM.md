@@ -1,6 +1,6 @@
 # LEDGIO AI — Auth System (Better Auth)
 
-> Better Auth v1.0 + Organizations Plugin + RBAC — อัพเดต April 2026
+> Current auth notes. Updated May 2026 from `lib/auth/**`, `proxy.ts`, and the live schema.
 
 ---
 
@@ -25,6 +25,16 @@
 
 ---
 
+## Current Implementation
+
+The actual code keeps Better Auth intentionally small:
+
+- Better Auth Drizzle adapter with PostgreSQL.
+- Email/password auth enabled.
+- Organization plugin enabled with `allowUserToCreateOrganization: true`.
+- Local RBAC permission map in [lib/auth/permissions.ts](/Users/nontawatwongnuk/dev_bos/ledgioai/lib/auth/permissions.ts).
+- Route protection in [proxy.ts](/Users/nontawatwongnuk/dev_bos/ledgioai/proxy.ts), not `middleware.ts`.
+
 ## Setup
 
 ### Installation
@@ -48,48 +58,16 @@ import { db } from "@/lib/db"
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
     provider: "pg",
-    usePlural: true,
   }),
 
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false,  // Phase 1 ปิดก่อน
-    password: {
-      hash: async (password) => {
-        const bcrypt = await import("bcryptjs")
-        return bcrypt.hash(password, 12)
-      },
-      verify: async ({ hash, password }) => {
-        const bcrypt = await import("bcryptjs")
-        return bcrypt.compare(password, hash)
-      },
-    },
+    requireEmailVerification: false,
   },
 
   plugins: [
     organization({
-      roles: {
-        owner:  { permissions: ["*"] },
-        admin:  {
-          permissions: [
-            "agent:create", "agent:update", "agent:delete",
-            "team:create", "team:update", "team:delete",
-            "meeting:start", "meeting:read",
-            "memory:read", "memory:update", "memory:delete",
-            "settings:read", "settings:update",
-            "member:invite", "member:read",
-          ],
-        },
-        member: {
-          permissions: [
-            "meeting:start", "meeting:read",
-            "agent:read", "team:read", "memory:read",
-          ],
-        },
-        viewer: {
-          permissions: ["meeting:read", "agent:read", "team:read", "memory:read"],
-        },
-      },
+      allowUserToCreateOrganization: true,
     }),
   ],
 
@@ -99,9 +77,6 @@ export const auth = betterAuth({
     cookieCache: { enabled: true, maxAge: 5 * 60 },
   },
 
-  advanced: {
-    generateId: () => crypto.randomUUID(),
-  },
 })
 
 export type Auth = typeof auth
@@ -243,16 +218,21 @@ export async function POST(request: Request) {
 
 ## Roles Reference
 
+This table reflects the current local permission map, not a Better Auth `roles` plugin config.
+
 | Action | owner | admin | member | viewer |
 |--------|:-----:|:-----:|:------:|:------:|
-| สร้าง/แก้/ลบ Agent | ✅ | ✅ | ❌ | ❌ |
-| สร้าง/แก้/ลบ Team | ✅ | ✅ | ❌ | ❌ |
+| อ่าน Agent/Team/Memory/Settings | ✅ | ✅ | ✅ | ✅ |
+| สร้าง/แก้ Agent | ✅ | ✅ | ✅ | ❌ |
+| ลบ Agent | ✅ | ✅ | ❌ | ❌ |
+| สร้าง/แก้/ลบ Team | ✅ | ✅ | อ่านอย่างเดียว | อ่านอย่างเดียว |
 | เริ่ม Meeting | ✅ | ✅ | ✅ | ❌ |
 | ดู Meeting History | ✅ | ✅ | ✅ | ✅ |
-| จัดการ Memory | ✅ | ✅ | ❌ | ❌ |
-| Workspace Settings | ✅ | ✅ | ❌ | ❌ |
+| สร้าง/แก้ Memory | ✅ | ✅ | ✅ | ❌ |
+| ลบ Memory | ✅ | ✅ | ❌ | ❌ |
+| Workspace Settings update | ✅ | ✅ | ❌ | ❌ |
 | Invite สมาชิก | ✅ | ✅ | ❌ | ❌ |
-| ลบ Workspace | ✅ | ❌ | ❌ | ❌ |
+| อ่านสมาชิก | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
@@ -265,37 +245,42 @@ export async function POST(request: Request) {
 // ไม่ต้องเขียนเอง
 
 // Tables:
-// users          — id, name, email, emailVerified, image, createdAt, updatedAt
-// sessions       — id, userId, token, expiresAt, ipAddress, userAgent, activeOrganizationId
-// accounts       — id, userId, providerId, accountId, ...
-// verifications  — id, identifier, value, expiresAt
-// organizations  — id, name, slug, logo, metadata, createdAt   ← = Workspace
-// members        — id, userId, organizationId, role, createdAt
-// invitations    — id, email, organizationId, role, status, expiresAt, inviterId
+// user          — id, name, email, emailVerified, image, createdAt, updatedAt
+// session       — id, userId, token, expiresAt, ipAddress, userAgent, activeOrganizationId
+// account       — id, userId, providerId, accountId, password, ...
+// verification  — id, identifier, value, expiresAt
+// organization  — id, name, slug, logo, metadata, createdAt   ← = Workspace
+// member        — id, userId, organizationId, role, createdAt
+// invitation    — id, email, organizationId, role, status, expiresAt, inviterId
 ```
 
 Key field: `sessions.activeOrganizationId` = workspaceId ที่ใช้ filter ทุก business query
 
 ---
 
-## Middleware
+## Route Protection
 
 ```typescript
-// middleware.ts (root)
+// proxy.ts (root) — Next.js 16
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { auth } from "@/lib/auth"
 
 const PUBLIC_PATHS = ["/login", "/register", "/api/auth"]
+const STATIC_EXTENSIONS = /\.(json|png|jpg|jpeg|svg|ico|webp|js|css|woff2?|ttf|eot|map|txt|xml|webmanifest)$/
 
-export async function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p))
   if (isPublic) return NextResponse.next()
 
-  const session = await auth.api.getSession({ headers: request.headers })
+  if (STATIC_EXTENSIONS.test(pathname)) return NextResponse.next()
+  if (pathname === "/api/health") return NextResponse.next()
 
-  if (!session) {
+  const sessionToken =
+    request.cookies.get("better-auth.session_token")?.value ||
+    request.cookies.get("__Secure-better-auth.session_token")?.value
+
+  if (!sessionToken) {
     const loginUrl = new URL("/login", request.url)
     loginUrl.searchParams.set("callbackUrl", pathname)
     return NextResponse.redirect(loginUrl)

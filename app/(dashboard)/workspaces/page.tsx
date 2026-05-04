@@ -4,8 +4,13 @@ import { useEffect, useState } from "react"
 import { useWorkspace } from "@/components/providers/workspace-provider"
 import { authClient } from "@/lib/auth/client"
 import {
-  Building2, Plus, Check, Users, Calendar, Trash2, Loader2,
+  Building2, Plus, Check, Calendar, Trash2, Loader2,
 } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button, ButtonLink } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
+import { Field, inputClasses } from "@/components/ui/form-section"
+import { PageHeader } from "@/components/ui/page-header"
 
 interface WorkspaceInfo {
   id: string
@@ -93,52 +98,44 @@ export default function WorkspacesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Workspaces</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">จัดการ Workspace ของคุณ</p>
-        </div>
-        <button
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          สร้าง Workspace
-        </button>
-      </div>
+      <PageHeader
+        title="เวิร์กสเปซ"
+        description="แยกข้อมูล ทีม ผู้เชี่ยวชาญ และการตั้งค่าสำหรับแต่ละองค์กร"
+        actions={
+          <Button onClick={() => setCreating(true)}>
+            <Plus className="h-4 w-4" />
+            สร้างเวิร์กสเปซ
+          </Button>
+        }
+      />
 
       {/* Create Form */}
       {creating && (
-        <div className="rounded-xl border border-blue-200 bg-blue-50 dark:bg-blue-950 p-4">
-          <form onSubmit={handleCreate} className="flex items-end gap-3">
-            <div className="flex-1">
-              <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300">
-                ชื่อ Workspace
-              </label>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
+          <form onSubmit={handleCreate} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <Field label="ชื่อเวิร์กสเปซ" className="flex-1">
               <input
                 type="text"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="เช่น สำนักงานบัญชี ABC"
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
+                className={inputClasses}
                 autoFocus
               />
-            </div>
-            <button
+            </Field>
+            <Button
               type="submit"
               disabled={submitting || !newName.trim()}
-              className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "สร้าง"}
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={() => { setCreating(false); setNewName("") }}
-              className="rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-gray-800 transition-colors"
+              variant="secondary"
             >
               ยกเลิก
-            </button>
+            </Button>
           </form>
         </div>
       )}
@@ -160,18 +157,12 @@ export default function WorkspacesPage() {
         </div>
       ) : workspaces.length === 0 ? (
         /* Empty */
-        <div className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-950 py-16">
-          <Building2 className="h-12 w-12 text-gray-400" />
-          <h3 className="mt-4 text-lg font-semibold text-gray-900 dark:text-gray-100">ยังไม่มี Workspace</h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">สร้าง Workspace แรกเพื่อเริ่มใช้งาน</p>
-          <button
-            onClick={() => setCreating(true)}
-            className="mt-4 flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4" />
-            สร้าง Workspace
-          </button>
-        </div>
+        <EmptyState
+          icon={<Building2 className="h-12 w-12" />}
+          title="ยังไม่มีเวิร์กสเปซ"
+          description="สร้างเวิร์กสเปซแรกเพื่อเริ่มจัดทีมผู้เชี่ยวชาญ"
+          action={<Button onClick={() => setCreating(true)}><Plus className="h-4 w-4" />สร้างเวิร์กสเปซ</Button>}
+        />
       ) : (
         /* Workspace Cards */
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -201,9 +192,7 @@ export default function WorkspacesPage() {
                     {ws.slug && (
                       <p className="text-xs text-gray-400 truncate">{ws.slug}</p>
                     )}
-                    <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${role.color}`}>
-                      {role.label}
-                    </span>
+                    <Badge className={role.color}>{role.label}</Badge>
                   </div>
                 </div>
 
@@ -216,20 +205,18 @@ export default function WorkspacesPage() {
 
                 <div className="mt-4 flex gap-2">
                   {!isActive && (
-                    <button
+                    <Button
                       onClick={() => handleSwitch(ws.id)}
-                      className="flex-1 rounded-lg bg-blue-50 dark:bg-blue-950 px-3 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 hover:bg-blue-100 transition-colors"
+                      variant="soft"
+                      className="flex-1"
                     >
                       สลับมาใช้
-                    </button>
+                    </Button>
                   )}
                   {isActive && (
-                    <a
-                      href="/settings"
-                      className="flex-1 rounded-lg bg-gray-50 dark:bg-gray-950 px-3 py-2 text-center text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-gray-800 transition-colors"
-                    >
+                    <ButtonLink href="/settings" variant="secondary" className="flex-1">
                       ตั้งค่า
-                    </a>
+                    </ButtonLink>
                   )}
                   {ws.role === "owner" && !isActive && (
                     <button

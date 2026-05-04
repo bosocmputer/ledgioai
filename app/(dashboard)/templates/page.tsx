@@ -2,7 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { LayoutTemplate, Search, ArrowRight } from "lucide-react"
+import { LayoutTemplate, ArrowRight } from "lucide-react"
+import { PageInfo } from "@/components/ui/page-info"
+import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
+import { PageHeader } from "@/components/ui/page-header"
+import { SearchInput } from "@/components/ui/search-input"
 
 interface Template {
   id: string
@@ -51,25 +56,21 @@ export default function TemplatesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">เทมเพลต Agent</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          เลือก template เพื่อสร้าง Agent อย่างรวดเร็ว
-        </p>
-      </div>
+      <PageHeader
+        title="เทมเพลต"
+        description="เริ่มจากผู้เชี่ยวชาญสำเร็จรูป แล้วปรับ soul, model และ knowledge ให้เข้ากับงานจริง"
+      />
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          placeholder="ค้นหาเทมเพลต..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-      </div>
+      <PageInfo id="templates">
+        Template คือ agent สำเร็จรูปที่ตั้งค่า soul และความเชี่ยวชาญไว้ให้แล้ว ใช้เป็นจุดเริ่มต้นแทนการสร้างจากศูนย์ กด "ใช้ template นี้" แล้วปรับรายละเอียดให้ตรงกับสำนักงานหรือลูกค้าของคุณ เช่น เพิ่ม knowledge base หรือเปลี่ยน LLM model
+      </PageInfo>
+
+      <SearchInput
+        placeholder="ค้นหาชื่อ บทบาท หรือหมวดหมู่..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        onClear={() => setSearch("")}
+      />
 
       {loading ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -90,12 +91,11 @@ export default function TemplatesPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 py-12 text-center">
-          <LayoutTemplate className="mx-auto h-12 w-12 text-gray-300" />
-          <h3 className="mt-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-            ไม่พบเทมเพลต
-          </h3>
-        </div>
+        <EmptyState
+          icon={<LayoutTemplate className="h-12 w-12" />}
+          title="ไม่พบเทมเพลต"
+          description="ลองค้นหาด้วยชื่อ บทบาท หรือหมวดหมู่อื่น"
+        />
       ) : (
         <div className="space-y-8">
           {Array.from(categories.entries()).map(([category, tpls]) => (
@@ -135,13 +135,14 @@ export default function TemplatesPage() {
                           </span>
                         )}
                       </div>
-                      <button
+                      <Button
                         onClick={() => handleUseTemplate(tpl.id)}
-                        className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-300"
+                        variant="ghost"
+                        size="sm"
                       >
                         ใช้เทมเพลต
                         <ArrowRight className="h-3.5 w-3.5" />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}

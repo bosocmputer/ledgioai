@@ -242,7 +242,7 @@ Pre-built templates สำหรับ domains ทั่วไป:
 | 3.4 | Agent Templates: pre-built Thai accounting/legal/finance agents | P0 | ✅ |
 | 3.5 | Team CRUD API + UI | P0 | ✅ |
 | 3.6 | Drag-and-drop agent → team assignment | P1 | — |
-| 3.7 | Agent preview: test agent ด้วย Quick Ask ก่อน add to team | P1 | — |
+| 3.7 | Agent preview: test agent ด้วย Quick Ask ก่อน add to team | P1 | ✅ |
 
 **Deliverable**: ✅ สร้าง agent ได้ + upload knowledge + จัดทีมได้ + template gallery
 
@@ -301,7 +301,7 @@ Pre-built templates สำหรับ domains ทั่วไป:
 | 6.4 | Responsive sidebar: mobile drawer + hamburger menu | P0 | ✅ |
 | 6.5 | Loading skeletons ทุกหน้า (agents, teams, history, memory, templates) | P1 | ✅ |
 | 6.6 | Empty states polish (ทุกหน้ามี icon + CTA) | P1 | ✅ |
-| 6.7 | Stats page: token chart, mode distribution, top agents table | P1 | ✅ |
+| 6.7 | Stats page: token chart, mode distribution, top agents table, cost estimate | P1 | ✅ |
 | 6.8 | Build verify (36 routes, 0 errors) + API test | P1 | ✅ |
 | 6.9 | Dark mode | P2 | ⏳ Deferred |
 
@@ -353,16 +353,38 @@ Pre-built templates สำหรับ domains ทั่วไป:
 
 ---
 
-### Phase 10: Future Roadmap (TBD)
+### Phase 10: Post-Launch Hardening (April 2026) ✅ COMPLETED
+
+| Task | Detail | Status |
+|------|--------|--------|
+| 10.1 | Token Quota enforcement — maxTokensPerMeeting + maxMeetingsPerDay (per workspace settings) | ✅ |
+| 10.2 | Meeting timeout guards — Quick Ask 30s / Consult 90s / Full Board 300s (withTimeout + Promise.race) | ✅ |
+| 10.3 | Sentry error tracking — client + server + edge configs, captureException with workspaceId/mode context | ✅ |
+| 10.4 | LLM cost calculator — lib/cost.ts with pricing table for all 6 providers (USD/THB) | ✅ |
+| 10.5 | Cost KPI shown in Insights page (30-day rolling, USD + THB) | ✅ |
+| 10.6 | Agent Preview modal — SSE-streaming Quick Ask modal on agents page | ✅ |
+| 10.7 | Dockerfile health check fix — localhost → 127.0.0.1 (IPv4, was failing on IPv6) | ✅ |
+| 10.8 | clarificationAnswers schema fix — questionId → question (was type mismatch) | ✅ |
+| 10.9 | Consult mode synthesis — added Phase 3 chairman summary (was missing finalAnswer) | ✅ |
+| 10.10 | Agent stats inputTokens/outputTokens fix — was always 0, now uses Mastra usage object | ✅ |
+
+---
+
+### Phase 11: Future Roadmap (TBD)
 
 | Feature | Detail |
 |---------|--------|
 | **LINE Integration** | Bot สำหรับ Quick Ask ผ่าน LINE (คนไทยใช้ LINE) |
 | **Agent Marketplace** | แชร์ agent templates ระหว่าง workspace |
-| **Subscription Billing** | Free/Pro/Enterprise tiers |
+| **Subscription Billing** | Free/Pro/Enterprise tiers (Omise/Stripe) |
 | **Super Admin Panel** | จัดการ users, workspaces, monitoring |
 | **API Access** | REST API สำหรับ integrate กับ app อื่น |
 | **Webhook** | Trigger meeting อัตโนมัติจาก event ภายนอก |
+| **Email (Resend)** | Invitation emails, meeting summaries |
+| **Dark Mode** | UI theme toggle |
+| **Drag-and-drop** | Agent picker ใน Meeting Room |
+| **Workspace Profile** | หน้าแสดงข้อมูลบริษัท/workspace ที่ agents รู้ |
+| **MCP/ERP Integration** | เชื่อม Centrix/ERP ผ่าน Mastra MCP plugin |
 
 ---
 
@@ -370,7 +392,7 @@ Pre-built templates สำหรับ domains ทั่วไป:
 
 | Layer | Technology | เหตุผล |
 |-------|-----------|--------|
-| **Framework** | Next.js 15 (App Router) | SSR + API routes + RSC |
+| **Framework** | Next.js 16.2.3 (App Router) | SSR + API routes + RSC |
 | **Language** | TypeScript 5 strict | Type safety ทุกชั้น |
 | **UI** | React 19 + Tailwind 4 | เดิม ดีอยู่แล้ว |
 | **Icons** | Lucide React | เดิม |

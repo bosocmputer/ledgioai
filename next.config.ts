@@ -35,9 +35,15 @@ export default withSentryConfig(nextConfig, {
   // Upload source maps เฉพาะตอน build จริง
   widenClientFileUpload: true,
   // ซ่อน source maps จาก browser
-  hideSourceMaps: true,
-  // ไม่ใช้ Sentry logger (ใช้ Pino แทน)
-  disableLogger: true,
+  sourcemaps: {
+    deleteSourcemapsAfterUpload: true,
+  },
+  // ไม่ใช้ Sentry debug logger (ใช้ Pino แทน)
+  webpack: {
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
   // ปิด telemetry ของ Sentry CLI
   telemetry: false,
 })

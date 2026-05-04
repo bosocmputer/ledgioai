@@ -28,13 +28,13 @@ import { useState, useEffect } from "react"
 const navItems = [
   { href: "/", label: "แดชบอร์ด", icon: LayoutDashboard },
   { href: "/meeting", label: "ห้องประชุม", icon: MessageSquare },
-  { href: "/agents", label: "Agents", icon: Bot },
+  { href: "/agents", label: "ผู้เชี่ยวชาญ", icon: Bot },
   { href: "/teams", label: "ทีม", icon: Users },
   { href: "/templates", label: "เทมเพลต", icon: LayoutTemplate },
-  { href: "/history", label: "ประวัติ", icon: History },
-  { href: "/memory", label: "Memory", icon: Brain },
-  { href: "/insights", label: "Insight", icon: BarChart3 },
-  { href: "/workspaces", label: "Workspace", icon: Building2 },
+  { href: "/history", label: "ประวัติประชุม", icon: History },
+  { href: "/memory", label: "ความจำ", icon: Brain },
+  { href: "/insights", label: "อินไซต์", icon: BarChart3 },
+  { href: "/workspaces", label: "เวิร์กสเปซ", icon: Building2 },
   { href: "/settings", label: "ตั้งค่า", icon: Settings },
 ]
 

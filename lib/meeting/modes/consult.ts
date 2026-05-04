@@ -14,6 +14,7 @@ import {
   buildSynthesisPrompt,
   detectChairman,
 } from "../prompts"
+import { normalizeUsage } from "../usage"
 
 type AgentRow = typeof agents.$inferSelect
 
@@ -21,6 +22,8 @@ interface AgentAnalysis {
   agent: AgentRow
   content: string
   tokensUsed: number
+  inputTokens: number
+  outputTokens: number
 }
 
 export interface ConsultResult {
@@ -55,9 +58,7 @@ export async function runConsult(
       const userMessage = buildAnalysisPrompt(question)
       const result = await mastraAgent.generate([{ role: "user", content: userMessage }])
 
-      const inputTokens = result.usage?.promptTokens ?? 0
-      const outputTokens = result.usage?.completionTokens ?? 0
-      const tokensUsed = result.usage?.totalTokens ?? (inputTokens + outputTokens)
+      const { inputTokens, outputTokens, totalTokens: tokensUsed } = normalizeUsage(result.usage)
       totalTokens += tokensUsed
 
       send("message", {
@@ -75,7 +76,7 @@ export async function runConsult(
   // ── Phase 2: Discussion (each reads others' analysis) ─
   send("status", { message: "กำลังถกเถียง..." })
 
-  const discussions: Array<{ agentId: string; content: string; tokensUsed: number }> = []
+  const discussions: ConsultResult["discussions"] = []
 
   for (const analysis of analyses) {
     const agentRow = analysis.agent
@@ -97,9 +98,7 @@ export async function runConsult(
     const userMessage = buildDiscussionPrompt(question, analysis.content, othersContext, agentRow)
     const result = await mastraAgent.generate([{ role: "user", content: userMessage }])
 
-    const inputTokens = result.usage?.promptTokens ?? 0
-    const outputTokens = result.usage?.completionTokens ?? 0
-    const tokensUsed = result.usage?.totalTokens ?? (inputTokens + outputTokens)
+    const { inputTokens, outputTokens, totalTokens: tokensUsed } = normalizeUsage(result.usage)
     totalTokens += tokensUsed
 
     send("message", {
@@ -145,9 +144,11 @@ export async function runConsult(
   }
 
   const synthesisOutput = await synthesisStream.getFullOutput()
-  const synthInput = synthesisOutput.usage?.promptTokens ?? 0
-  const synthOutput = synthesisOutput.usage?.completionTokens ?? 0
-  const synthTokens = synthesisOutput.usage?.totalTokens ?? (synthInput + synthOutput)
+  const {
+    inputTokens: synthInput,
+    outputTokens: synthOutput,
+    totalTokens: synthTokens,
+  } = normalizeUsage(synthesisOutput.usage)
   totalTokens += synthTokens
 
   send("message", {

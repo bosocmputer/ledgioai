@@ -2,8 +2,11 @@
 
 import { useEffect, useState, useCallback, use } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { ArrowLeft, Save, Upload, Trash2, FileText } from "lucide-react"
+import { ArrowLeft, Brain, Cpu, Save, Settings2, Upload, Trash2, FileText, UserRound } from "lucide-react"
+import { Button, ButtonLink } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
+import { FormSection, Field, inputClasses, textareaClasses } from "@/components/ui/form-section"
+import { PageHeader } from "@/components/ui/page-header"
 
 interface Agent {
   id: string
@@ -201,83 +204,64 @@ export default function AgentDetailPage({
   if (!agent) return null
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Link
-          href="/agents"
-          className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 dark:bg-gray-800 hover:text-gray-600 dark:text-gray-400"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">{agent.emoji}</span>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{agent.name}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{agent.role}</p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title={`${agent.emoji} ${agent.name}`}
+        description={agent.role}
+        actions={
+          <ButtonLink href="/agents" variant="secondary">
+            <ArrowLeft className="h-4 w-4" />
+            กลับ
+          </ButtonLink>
+        }
+      />
 
       {/* Edit Form */}
       <form onSubmit={handleSave} className="space-y-6">
         {/* Identity */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
-          <h2 className="mb-4 font-semibold text-gray-900 dark:text-gray-100">Identity</h2>
+        <FormSection title="ตัวตน" description="ชื่อ บทบาท และภาพจำที่จะแสดงในห้องประชุม" icon={<UserRound className="h-5 w-5" />}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2 flex gap-4">
-              <div className="w-24">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Emoji
-                </label>
+              <Field label="Emoji" className="w-24">
                 <input
                   name="emoji"
                   value={form.emoji}
                   onChange={handleChange}
-                  className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-center text-2xl focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className={`${inputClasses} text-center text-2xl`}
                 />
-              </div>
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  ชื่อ Agent
-                </label>
+              </Field>
+              <Field label="ชื่อผู้เชี่ยวชาญ" className="flex-1">
                 <input
                   name="name"
                   value={form.name}
                   onChange={handleChange}
                   required
-                  className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className={inputClasses}
                 />
-              </div>
+              </Field>
             </div>
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                บทบาท
-              </label>
+            <Field label="บทบาท" className="sm:col-span-2">
               <input
                 name="role"
                 value={form.role}
                 onChange={handleChange}
                 required
-                className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={inputClasses}
               />
-            </div>
+            </Field>
           </div>
-        </div>
+        </FormSection>
 
         {/* LLM Config */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
-          <h2 className="mb-4 font-semibold text-gray-900 dark:text-gray-100">LLM Configuration</h2>
+        <FormSection title="โมเดลและ API" description="เว้น API Key ว่างไว้หากไม่ต้องการเปลี่ยน key เดิม" icon={<Cpu className="h-5 w-5" />}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Provider
-              </label>
+            <Field label="Provider">
               <select
                 name="provider"
                 value={form.provider}
                 onChange={handleChange}
-                className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={inputClasses}
               >
                 {PROVIDERS.map((p) => (
                   <option key={p.value} value={p.value}>
@@ -285,23 +269,17 @@ export default function AgentDetailPage({
                   </option>
                 ))}
               </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Model
-              </label>
+            </Field>
+            <Field label="Model">
               <input
                 name="model"
                 value={form.model}
                 onChange={handleChange}
                 required
-                className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={inputClasses}
               />
-            </div>
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                API Key
-              </label>
+            </Field>
+            <Field label="API Key" className="sm:col-span-2">
               <input
                 name="apiKey"
                 type="password"
@@ -312,44 +290,37 @@ export default function AgentDetailPage({
                     ? "••• (เว้นว่างถ้าไม่ต้องการเปลี่ยน)"
                     : "sk-..."
                 }
-                className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-sm font-mono focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className={`${inputClasses} font-mono`}
               />
-            </div>
+            </Field>
             {(form.provider === "ollama" || form.provider === "custom") && (
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Base URL
-                </label>
+              <Field label="Base URL" className="sm:col-span-2">
                 <input
                   name="baseUrl"
                   value={form.baseUrl}
                   onChange={handleChange}
                   placeholder="http://localhost:11434"
-                  className="mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-700 p-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className={inputClasses}
                 />
-              </div>
+              </Field>
             )}
           </div>
-        </div>
+        </FormSection>
 
         {/* Soul */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
-          <h2 className="mb-4 font-semibold text-gray-900 dark:text-gray-100">
-            Soul (System Prompt)
-          </h2>
+        <FormSection title="Soul / System Prompt" description="นิสัย วิธีคิด ขอบเขตความเชี่ยวชาญ และรูปแบบคำตอบ" icon={<Brain className="h-5 w-5" />}>
           <textarea
             name="soul"
             value={form.soul}
             onChange={handleChange}
             required
             rows={8}
-            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={textareaClasses}
           />
-        </div>
+        </FormSection>
 
         {/* Advanced */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
-          <h2 className="mb-4 font-semibold text-gray-900 dark:text-gray-100">Advanced</h2>
+        <FormSection title="การทำงานขั้นสูง" icon={<Settings2 className="h-5 w-5" />}>
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -388,7 +359,7 @@ export default function AgentDetailPage({
               </div>
             </div>
           </div>
-        </div>
+        </FormSection>
 
         {/* Messages */}
         {error && (
@@ -404,23 +375,21 @@ export default function AgentDetailPage({
 
         {/* Save */}
         <div className="flex justify-end">
-          <button
+          <Button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
             {saving ? "กำลังบันทึก..." : "บันทึก"}
-          </button>
+          </Button>
         </div>
       </form>
 
       {/* Knowledge Base */}
-      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-            Knowledge Base ({knowledge.length})
-          </h2>
+      <FormSection
+        title={`คลังความรู้ (${knowledge.length})`}
+        description="เอกสารเหล่านี้จะช่วยให้ผู้เชี่ยวชาญตอบโดยอิงข้อมูลของ workspace"
+        actions={
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:bg-gray-700 transition-colors">
             <Upload className="h-4 w-4" />
             {uploading ? "กำลังอัปโหลด..." : "อัปโหลด"}
@@ -432,15 +401,15 @@ export default function AgentDetailPage({
               disabled={uploading}
             />
           </label>
-        </div>
+        }
+      >
 
         {knowledge.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 py-8 text-center">
-            <FileText className="mx-auto h-10 w-10 text-gray-300" />
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              ยังไม่มีเอกสาร — อัปโหลด PDF, Excel, Word, CSV, TXT หรือ MD
-            </p>
-          </div>
+          <EmptyState
+            icon={<FileText className="h-10 w-10" />}
+            title="ยังไม่มีเอกสาร"
+            description="อัปโหลด PDF, Excel, Word, CSV, TXT หรือ MD เพื่อเพิ่มบริบทให้ผู้เชี่ยวชาญ"
+          />
         ) : (
           <div className="space-y-3">
             {knowledge.map((k) => (
@@ -466,7 +435,7 @@ export default function AgentDetailPage({
             ))}
           </div>
         )}
-      </div>
+      </FormSection>
     </div>
   )
 }

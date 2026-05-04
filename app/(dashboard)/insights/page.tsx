@@ -1,7 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BarChart3, TrendingUp, Star, Zap, Users, MessageSquare } from "lucide-react"
+import { BarChart3, TrendingUp, Star, Zap, Users, MessageSquare, DollarSign } from "lucide-react"
+import { EmptyState } from "@/components/ui/empty-state"
+import { MetricCard } from "@/components/ui/metric-card"
+import { PageHeader } from "@/components/ui/page-header"
+import { PageInfo } from "@/components/ui/page-info"
 
 interface InsightData {
   meetingsByDay: { day: string; count: number }[]
@@ -10,6 +14,14 @@ interface InsightData {
   tokensByDay: { day: string; tokens: number }[]
   topQuestions: { question: string; mode: string }[]
   agentCount: number
+  totalCostUsd: number
+}
+
+function formatCost(usd: number): string {
+  if (usd === 0) return "$0.00"
+  if (usd < 0.0001) return "< $0.0001"
+  if (usd < 0.01) return `$${usd.toFixed(4)}`
+  return `$${usd.toFixed(4)}`
 }
 
 export default function InsightDashboardPage() {
@@ -30,9 +42,14 @@ export default function InsightDashboardPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold dark:text-gray-100">📊 Insight Dashboard</h1>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <PageHeader title="อินไซต์" description="สรุปข้อมูลการใช้งาน 30 วันล่าสุด" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="animate-pulse rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 h-28" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, i) => (
             <div key={i} className="animate-pulse rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 h-28" />
           ))}
         </div>
@@ -40,7 +57,15 @@ export default function InsightDashboardPage() {
     )
   }
 
-  if (!data) return <div className="text-gray-500">Failed to load insights</div>
+  if (!data) {
+    return (
+      <EmptyState
+        icon={<BarChart3 className="h-12 w-12" />}
+        title="โหลดอินไซต์ไม่สำเร็จ"
+        description="ลองรีเฟรชหน้าอีกครั้ง หรือเช็ก API /api/stats/insights"
+      />
+    )
+  }
 
   const totalMeetings = data.meetingsByDay.reduce((s, d) => s + d.count, 0)
   const totalTokens = data.tokensByDay.reduce((s, d) => s + d.tokens, 0)
@@ -55,46 +80,33 @@ export default function InsightDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">📊 Insight Dashboard</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          สรุปข้อมูลการใช้งาน 30 วันล่าสุด
-        </p>
+      <PageHeader
+        title="อินไซต์"
+        description="สรุปประชุม token ค่าใช้จ่าย และแนวโน้มการใช้งาน 30 วันล่าสุด"
+      />
+
+      <PageInfo id="insights">
+        ดูภาพรวมการใช้งานระบบ — จำนวนประชุม token ที่ใช้ไป และค่าใช้จ่าย LLM จริงตาม provider และ model ของแต่ละ agent ใช้ตรวจสอบว่าสำนักงานใช้ทรัพยากรคุ้มค่าหรือไม่ หรือต้องปรับ model ให้ประหยัดขึ้น
+      </PageInfo>
+
+      {/* KPI Cards — row 1: primary metrics */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MetricCard icon={<MessageSquare className="h-5 w-5" />} label="ประชุมทั้งหมด" value={totalMeetings} helper="30 วันล่าสุด" toneClassName="bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400" />
+
+        <MetricCard icon={<Zap className="h-5 w-5" />} label="Tokens ที่ใช้" value={totalTokens.toLocaleString()} helper="30 วันล่าสุด" toneClassName="bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400" />
+
+        <MetricCard icon={<DollarSign className="h-5 w-5" />} label="ค่าใช้จ่าย LLM" value={formatCost(data.totalCostUsd)} helper={`≈ ฿${(data.totalCostUsd * 36).toFixed(2)} · 30 วัน`} toneClassName="bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" />
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* KPI Cards — row 2: secondary metrics */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-950">
-              <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">ประชุมทั้งหมด</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{totalMeetings}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-50 dark:bg-amber-950">
-              <Zap className="h-5 w-5 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Tokens ใช้ไป</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{totalTokens.toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-50 dark:bg-green-950">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-green-50 dark:bg-green-950">
               <Users className="h-5 w-5 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Agents</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">ผู้เชี่ยวชาญที่ใช้งานอยู่</p>
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{data.agentCount}</p>
             </div>
           </div>
@@ -102,7 +114,7 @@ export default function InsightDashboardPage() {
 
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
+            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-purple-50 dark:bg-purple-950">
               <Star className="h-5 w-5 text-purple-600 dark:text-purple-400" />
             </div>
             <div>

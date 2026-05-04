@@ -10,14 +10,17 @@ import {
   Paperclip,
   Loader2,
   Bot,
-  ChevronDown,
   X,
   Copy,
   Check,
   Download,
   Share2,
+  SlidersHorizontal,
 } from "lucide-react"
 import { VoiceInput } from "@/components/meeting/voice-input"
+import { PageInfo } from "@/components/ui/page-info"
+import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
 
 // ── Types ──────────────────────────────────────────────
 
@@ -118,6 +121,7 @@ export default function MeetingPage() {
   const [currentPhase, setCurrentPhase] = useState<string | null>(null)
   const [totalTokens, setTotalTokens] = useState(0)
   const [language, setLanguage] = useState("th")
+  const [showSetup, setShowSetup] = useState(false)
 
   // Clarification state
   const [clarificationQuestions, setClarificationQuestions] = useState<string[]>([])
@@ -163,6 +167,7 @@ export default function MeetingPage() {
   const selectedCount = selectedAgentIds.length
   const currentMode = MODES.find((m) => m.id === selectedMode)!
   const canStart = question.trim() && selectedCount >= currentMode.minAgents && !isRunning
+  const selectedTeamName = teams.find((team) => team.id === selectedTeamId)?.name
 
   // ── Start Meeting ──────────────────────────────────
   const startMeeting = useCallback(
@@ -241,7 +246,7 @@ export default function MeetingPage() {
         setIsRunning(false)
       }
     },
-    [canStart, question, selectedMode, selectedTeamId, selectedAgentIds, files],
+    [canStart, question, selectedMode, selectedTeamId, selectedAgentIds, files, language],
   )
 
   // ── SSE Event Handler ──────────────────────────────
@@ -384,12 +389,20 @@ export default function MeetingPage() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
-  return (
-    <div className="flex h-[calc(100vh-64px)]">
-      {/* ── Sidebar: Agent/Team Selector ─── */}
-      <div className="w-72 border-r border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 p-4 overflow-y-auto flex-shrink-0">
-        {/* Mode Selector */}
-        <div className="mb-6">
+  const setupPanel = (
+    <aside className="flex h-full w-full flex-col overflow-y-auto bg-gray-50 p-4 dark:bg-gray-950 lg:w-80 lg:border-r lg:border-gray-200 lg:dark:border-gray-700">
+      <div className="mb-4 flex items-center justify-between lg:hidden">
+        <div>
+          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">ตั้งค่าการประชุม</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">เลือกโหมด ทีม และผู้เชี่ยวชาญ</p>
+        </div>
+        <Button variant="ghost" size="icon" onClick={() => setShowSetup(false)} aria-label="ปิดแผงตั้งค่า">
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {/* Mode Selector */}
+      <div className="mb-6">
           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">โหมดประชุม</h3>
           <div className="space-y-2">
             {MODES.map((mode) => (
@@ -398,8 +411,8 @@ export default function MeetingPage() {
                 onClick={() => setSelectedMode(mode.id)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                   selectedMode === mode.id
-                    ? "bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-300"
-                    : "bg-white dark:bg-gray-900 hover:bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                    ? "border border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                    : "border border-gray-200 bg-white hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
                 }`}
               >
                 {mode.icon}
@@ -410,7 +423,7 @@ export default function MeetingPage() {
               </button>
             ))}
           </div>
-        </div>
+      </div>
 
         {/* Language Selector */}
         <div className="mb-6">
@@ -438,14 +451,14 @@ export default function MeetingPage() {
                   onClick={() => selectTeam(team)}
                   className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                     selectedTeamId === team.id
-                      ? "bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-300"
-                      : "bg-white dark:bg-gray-900 hover:bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                      ? "border border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                      : "border border-gray-200 bg-white hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
                   }`}
                 >
                   <span className="text-lg">{team.emoji}</span>
                   <div className="text-left">
                     <div className="font-medium">{team.name}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{team.agents.length} agents</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{team.agents.length} คน</div>
                   </div>
                 </button>
               ))}
@@ -456,7 +469,7 @@ export default function MeetingPage() {
         {/* Agent Selection */}
         <div>
           <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-2">
-            ผู้เชี่ยวชาญ ({selectedCount} selected)
+            ผู้เชี่ยวชาญ ({selectedCount} คน)
           </h3>
           <div className="space-y-1">
             {agents.map((agent) => (
@@ -465,8 +478,8 @@ export default function MeetingPage() {
                 onClick={() => toggleAgent(agent.id)}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                   selectedAgentIds.includes(agent.id)
-                    ? "bg-blue-100 text-blue-700 dark:text-blue-300 border border-blue-300"
-                    : "bg-white dark:bg-gray-900 hover:bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+                    ? "border border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300"
+                    : "border border-gray-200 bg-white hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800"
                 }`}
               >
                 <span className="text-lg">{agent.emoji}</span>
@@ -477,67 +490,112 @@ export default function MeetingPage() {
               </button>
             ))}
             {agents.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-4">
-                ยังไม่มีผู้เชี่ยวชาญ
-              </p>
+              <EmptyState
+                icon={<Bot className="h-10 w-10" />}
+                title="ยังไม่มีผู้เชี่ยวชาญ"
+                description="สร้างผู้เชี่ยวชาญก่อน แล้วกลับมาเริ่มประชุมได้ทันที"
+                className="bg-white py-8 dark:bg-gray-900"
+              />
             )}
           </div>
         </div>
-      </div>
+    </aside>
+  )
+
+  return (
+    <div className="relative flex h-[calc(100vh-64px)] overflow-hidden">
+      <div className="hidden lg:block">{setupPanel}</div>
+      {showSetup && (
+        <div className="fixed inset-0 z-40 bg-black/40 lg:hidden" onClick={() => setShowSetup(false)}>
+          <div
+            className="h-full w-[min(88vw,360px)] shadow-xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {setupPanel}
+          </div>
+        </div>
+      )}
 
       {/* ── Main Chat Area ─── */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
-        <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center justify-between bg-white dark:bg-gray-900">
-          <div>
-            <h1 className="text-lg font-semibold">ห้องประชุม</h1>
-            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-              {currentPhase && (
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 dark:text-blue-300 rounded-full text-xs">
-                  {currentPhase}
-                </span>
-              )}
-              {statusText && <span>{statusText}</span>}
-              {totalTokens > 0 && (
-                <span className="text-xs text-gray-400">({totalTokens.toLocaleString()} tokens)</span>
-              )}
+        <div className="border-b border-gray-200 bg-white px-4 py-3 dark:border-gray-700 dark:bg-gray-900 sm:px-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  onClick={() => setShowSetup(true)}
+                  className="lg:hidden"
+                  aria-label="เปิดแผงตั้งค่า"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                </Button>
+                <h1 className="truncate text-lg font-semibold text-gray-900 dark:text-gray-100">ห้องประชุม</h1>
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+                <span>{currentMode.label}</span>
+                <span>•</span>
+                <span>{selectedTeamName ?? `${selectedCount} ผู้เชี่ยวชาญ`}</span>
+                {currentPhase && (
+                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:text-blue-300">
+                    {currentPhase}
+                  </span>
+                )}
+                {statusText && <span>{statusText}</span>}
+                {totalTokens > 0 && (
+                  <span className="text-xs text-gray-400">({totalTokens.toLocaleString()} tokens)</span>
+                )}
+              </div>
             </div>
+            {isRunning && <Loader2 className="h-5 w-5 animate-spin text-blue-500" />}
+            {!isRunning && meetingId && (
+              <div className="flex shrink-0 items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => window.open(`/api/meetings/${meetingId}/report`, "_blank")}
+                >
+                  <Download className="w-4 h-4" /> รายงาน
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={async () => {
+                    const res = await fetch(`/api/meetings/${meetingId}/share`, { method: "POST" })
+                    if (res.ok) {
+                      const json = await res.json()
+                      const url = `${window.location.origin}/share/${json.data.token}`
+                      await navigator.clipboard.writeText(url)
+                      alert("คัดลอกลิงก์แชร์แล้ว!")
+                    }
+                  }}
+                >
+                  <Share2 className="w-4 h-4" /> แชร์
+                </Button>
+              </div>
+            )}
           </div>
-          {isRunning && <Loader2 className="w-5 h-5 animate-spin text-blue-500" />}
-          {!isRunning && meetingId && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => window.open(`/api/meetings/${meetingId}/report`, "_blank")}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              >
-                <Download className="w-4 h-4" /> รายงาน
-              </button>
-              <button
-                onClick={async () => {
-                  const res = await fetch(`/api/meetings/${meetingId}/share`, { method: "POST" })
-                  if (res.ok) {
-                    const json = await res.json()
-                    const url = `${window.location.origin}/share/${json.data.token}`
-                    await navigator.clipboard.writeText(url)
-                    alert("คัดลอกลิงก์แชร์แล้ว!")
-                  }
-                }}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-              >
-                <Share2 className="w-4 h-4" /> แชร์
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6">
+          {/* Page info — shown only when no messages yet */}
+          {messages.length === 0 && !isRunning && (
+            <PageInfo id="meeting">
+              <strong>Quick Ask</strong> — ถามผู้เชี่ยวชาญคนเดียว ตอบเร็ว เหมาะกับคำถามเดี่ยวที่ต้องการคำตอบทันที ·{" "}
+              <strong>Consult</strong> — 2–3 คนวิเคราะห์แยกแล้วถกเถียงกัน เหมาะเมื่อต้องการ second opinion ·{" "}
+              <strong>Full Board</strong> — ประชุม 5 ขั้นตอน เหมาะกับการตัดสินใจสำคัญที่ต้องรอบด้าน
+            </PageInfo>
+          )}
+
           {messages.length === 0 && !isRunning && (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-4">
               <Bot className="w-16 h-16" />
               <div className="text-center">
                 <p className="text-lg font-medium">พร้อมเริ่มประชุม</p>
-                <p className="text-sm">เลือกผู้เชี่ยวชาญ → พิมพ์คำถาม → กด Enter</p>
+                <p className="text-sm">เลือกผู้เชี่ยวชาญ พิมพ์คำถาม แล้วกด Enter</p>
               </div>
             </div>
           )}
@@ -619,7 +677,7 @@ export default function MeetingPage() {
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-gray-900">
+        <div className="border-t border-gray-200 bg-white px-4 py-4 dark:border-gray-700 dark:bg-gray-900 sm:px-6">
           {/* Attached files */}
           {files.length > 0 && (
             <div className="flex gap-2 mb-2 flex-wrap">
@@ -640,18 +698,20 @@ export default function MeetingPage() {
             </div>
           )}
 
-          <div className="flex gap-2">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:bg-gray-800 rounded-lg"
-              title="แนบเอกสาร"
-            >
-              <Paperclip className="w-5 h-5" />
-            </button>
-            <VoiceInput
-              onTranscript={(text) => setQuestion((prev) => prev ? prev + " " + text : text)}
-              disabled={isRunning}
-            />
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="flex gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                title="แนบเอกสาร"
+              >
+                <Paperclip className="w-5 h-5" />
+              </button>
+              <VoiceInput
+                onTranscript={(text) => setQuestion((prev) => prev ? prev + " " + text : text)}
+                disabled={isRunning}
+              />
+            </div>
             <input
               ref={fileInputRef}
               type="file"
@@ -682,10 +742,10 @@ export default function MeetingPage() {
               className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 dark:bg-gray-950"
               disabled={isRunning}
             />
-            <button
+            <Button
               onClick={() => startMeeting()}
               disabled={!canStart}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2"
+              className="sm:w-auto"
             >
               {isRunning ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -693,16 +753,16 @@ export default function MeetingPage() {
                 <Send className="w-4 h-4" />
               )}
               เริ่มประชุม
-            </button>
+            </Button>
           </div>
 
-          <div className="mt-1 text-xs text-gray-400 flex items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-400">
             <span>
-              {currentMode.label} • {selectedCount} agent{selectedCount !== 1 ? "s" : ""}
+              {currentMode.label} • เลือกแล้ว {selectedCount} คน
             </span>
             {selectedCount < currentMode.minAgents && (
               <span className="text-red-400">
-                (ต้องเลือกอย่างน้อย {currentMode.minAgents} agent)
+                ต้องเลือกอย่างน้อย {currentMode.minAgents} คน
               </span>
             )}
           </div>

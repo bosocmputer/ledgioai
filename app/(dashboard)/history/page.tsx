@@ -2,8 +2,15 @@
 
 import { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
-import { Clock, MessageCircle, Users, Building2, Search } from "lucide-react"
+import { Clock, MessageCircle, Users, Building2 } from "lucide-react"
 import { useWorkspace } from "@/components/providers/workspace-provider"
+import { PageInfo } from "@/components/ui/page-info"
+import { Badge } from "@/components/ui/badge"
+import { ButtonLink } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
+import { MetricCard } from "@/components/ui/metric-card"
+import { PageHeader } from "@/components/ui/page-header"
+import { SearchInput } from "@/components/ui/search-input"
 
 interface Meeting {
   id: string
@@ -85,32 +92,29 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">ประวัติการประชุม</h1>
+    <div className="space-y-6">
+      <PageHeader
+        title="ประวัติประชุม"
+        description="บันทึกคำถาม สรุปมติ transcript และ token usage ของเวิร์กสเปซนี้"
+      />
+
+      <PageInfo id="history">
+        ทุกการประชุมถูกบันทึกไว้ที่นี่ — กดเข้าไปดูการสนทนาทั้งหมด สรุปมติ และจำนวน token ที่ใช้ในแต่ละครั้ง ใช้เป็นข้อมูลอ้างอิงเมื่อลูกค้าถามซ้ำถึงคำแนะนำเดิม หรือต้องการตรวจสอบว่า agent ตอบอะไรไปบ้าง
+      </PageInfo>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">การประชุมทั้งหมด</div>
-          <div className="text-2xl font-bold">{stats.total}</div>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400">Tokens ใช้ทั้งหมด</div>
-          <div className="text-2xl font-bold">{stats.totalTokens.toLocaleString()}</div>
-        </div>
+      <div className="grid grid-cols-2 gap-4">
+        <MetricCard label="การประชุมทั้งหมด" value={stats.total} />
+        <MetricCard label="Tokens ใช้ทั้งหมด" value={stats.totalTokens.toLocaleString()} />
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-        <input
-          type="text"
-          value={searchDebounce}
-          onChange={(e) => setSearchDebounce(e.target.value)}
-          placeholder="ค้นหาคำถาม..."
-          className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
+      <SearchInput
+        className="max-w-md"
+        value={searchDebounce}
+        onChange={(e) => setSearchDebounce(e.target.value)}
+        onClear={() => setSearchDebounce("")}
+        placeholder="ค้นหาคำถาม..."
+      />
 
       {/* Meeting List */}
       {loading ? (
@@ -128,13 +132,12 @@ export default function HistoryPage() {
           ))}
         </div>
       ) : meetings.length === 0 ? (
-        <div className="text-center py-12">
-          <Clock className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-          <p className="text-gray-500 dark:text-gray-400">ยังไม่มีประวัติการประชุม</p>
-          <Link href="/meeting" className="text-blue-600 hover:underline text-sm mt-2 inline-block">
-            เริ่มประชุมตอนนี้
-          </Link>
-        </div>
+        <EmptyState
+          icon={<Clock className="h-12 w-12" />}
+          title={search ? "ไม่พบประวัติที่ค้นหา" : "ยังไม่มีประวัติการประชุม"}
+          description={search ? "ลองค้นหาด้วยคำถามอื่น" : "เริ่มประชุมแรกเพื่อให้ระบบบันทึก transcript และสรุปมติ"}
+          action={!search ? <ButtonLink href="/meeting">เริ่มประชุม</ButtonLink> : undefined}
+        />
       ) : (
         <div className="space-y-3">
           {meetings.map((meeting) => {
@@ -151,14 +154,14 @@ export default function HistoryPage() {
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{meeting.question}</p>
-                    <div className="flex items-center gap-2 mt-1">
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs ${mode.color}`}>
                         {mode.icon} {mode.label}
                       </span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${status.color}`}>
+                      <Badge tone={meeting.status === "completed" ? "green" : meeting.status === "error" ? "red" : meeting.status === "running" ? "amber" : "gray"}>
                         {status.label}
-                      </span>
-                      <span className="text-xs text-gray-400">{agentCount} agents</span>
+                      </Badge>
+                      <span className="text-xs text-gray-400">{agentCount} คน</span>
                       {meeting.totalTokens > 0 && (
                         <span className="text-xs text-gray-400">
                           {meeting.totalTokens.toLocaleString()} tokens

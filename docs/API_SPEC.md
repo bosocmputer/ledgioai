@@ -1,610 +1,259 @@
 # LEDGIO AI — API Specification
 
-> ทุก API endpoint, request/response format, authentication
+> Current source of truth for route handlers, auth, request shape, and response shape.
+> Updated May 2026 from the actual `app/api/**/route.ts` files.
 
-## 🔐 Authentication
+## Authentication
 
-ทุก API (ยกเว้น `/api/auth/*` และ `/api/health`) ต้อง authenticated:
-- **Session cookie** จาก NextAuth
-- ทุก endpoint ที่เกี่ยวกับ business data ต้องมี `companyId` (จาก cookie/header)
+All business APIs require a Better Auth session, except:
 
-### Common Response Format
+- `/api/auth/*`
+- `/api/health`
+- `/share/[token]` page access
 
-```typescript
+The active tenant is `session.activeOrganizationId`. In product language this is a **Workspace**; in Better Auth schema it is an `organization`.
+
+Common auth flow:
+
+1. Login/register through Better Auth at `/api/auth/[...all]`.
+2. Client sets active workspace through the Better Auth organization client.
+3. API routes call `requireAuth()` or `requirePermission()`.
+4. Every business query filters by `workspaceId`.
+
+Common responses:
+
+```ts
 // Success
 { data: T }
 
 // Error
 { error: string, details?: unknown }
 
-// List
-{ data: T[], total: number, page: number, pageSize: number }
+// Some list routes also return supporting metadata
+{ data: T[], stats?: unknown }
 ```
 
-### Common Headers
+## Permissions
 
-```
-Cookie: next-auth.session-token=xxx
-Cookie: ledgio-active-company=<companyId>
-Content-Type: application/json
-```
+Permissions are enforced by [lib/auth/permissions.ts](/Users/nontawatwongnuk/dev_bos/ledgioai/lib/auth/permissions.ts).
 
----
+Roles:
 
-## 📋 Endpoints
+| Role | Notes |
+| --- | --- |
+| `owner` | Full workspace access |
+| `admin` | Full workspace operations except owner-only future actions |
+| `member` | Can read, start meetings, and currently create/update agents and memory |
+| `viewer` | Read-only for meetings, agents, teams, memory, settings, members |
 
-### Auth Endpoints
+The current code uses a local role-to-permission map after reading `member.role` from the Better Auth organization membership table.
 
-#### POST /api/auth/register
-สร้างบัญชีผู้ใช้ใหม่
+## Route Inventory
 
-```typescript
-// Request
+### Auth
+
+| Method | Route | Description |
+| --- | --- | --- |
+| `GET/POST` | `/api/auth/[...all]` | Better Auth catch-all handler |
+
+### Workspaces
+
+| Method | Route | Permission | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/workspaces` | session | List workspaces for current user |
+| `POST` | `/api/workspaces` | session | Checks max workspace limit; actual create is Better Auth organization client |
+| `GET` | `/api/workspaces/[id]` | member access | Get workspace details |
+| `PUT` | `/api/workspaces/[id]` | admin/owner intent | Update workspace metadata/name |
+| `DELETE` | `/api/workspaces/[id]` | owner intent | Delete workspace |
+| `POST` | `/api/workspaces/[id]/invite` | `member:invite` | Create Better Auth organization invitation |
+| `GET` | `/api/workspaces/[id]/members` | `member:read` | List workspace members |
+
+### Agents
+
+| Method | Route | Permission | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/agents` | `agent:read` | List active agents in active workspace |
+| `POST` | `/api/agents` | `agent:create` | Create agent; API key is encrypted before storage |
+| `GET` | `/api/agents/[id]` | `agent:read` | Get one agent scoped by workspace |
+| `PUT` | `/api/agents/[id]` | `agent:update` | Update agent; re-encrypts API key when provided |
+| `DELETE` | `/api/agents/[id]` | `agent:delete` | Soft-delete agent |
+| `POST` | `/api/agents/generate-soul` | `agent:create` | Generate an agent soul/system prompt |
+
+Public agent responses never expose `apiKeyEncrypted`; they expose `hasApiKey`.
+
+Create agent request:
+
+```ts
 {
-  name: string;        // min 2, max 100
-  email: string;       // valid email
-  password: string;    // min 8, max 100
-  companyName?: string; // optional, default: "{name}'s Company"
-}
-
-// Response 201
-{
-  message: "Registration successful",
-  userId: "uuid",
-  companyId: "uuid"
-}
-
-// Error 409
-{ error: "Email already registered" }
-```
-
-#### POST/GET /api/auth/[...nextauth]
-NextAuth handler — login, logout, session, csrf
-
----
-
-### Company Endpoints
-
-#### GET /api/companies
-รายการบริษัททั้งหมดของ user
-
-```typescript
-// Response 200
-{
-  data: [
-    {
-      company: {
-        id: "uuid",
-        name: "สำนักงานบัญชี ABC",
-        businessType: "สำนักงานบัญชี",
-        accountingStandard: "NPAEs",
-        fiscalYear: "มกราคม - ธันวาคม",
-        employeeCount: "10-50",
-        notes: "",
-        isActive: true,
-        createdAt: "2024-01-01T00:00:00Z"
-      },
-      role: "owner",
-      isDefault: true
-    }
-  ]
-}
-```
-
-#### POST /api/companies
-สร้างบริษัทใหม่
-
-```typescript
-// Request
-{
-  name: string;                // required
-  businessType?: string;
-  registrationNumber?: string;
-  accountingStandard?: string; // "PAEs" | "NPAEs"
-  fiscalYear?: string;
-  employeeCount?: string;
-  notes?: string;
-}
-
-// Response 201
-{ data: Company }
-```
-
-#### PUT /api/companies/[id]
-แก้ไขข้อมูลบริษัท (requires: admin+)
-
-```typescript
-// Request — partial update
-{
-  name?: string;
-  businessType?: string;
-  // ... same fields as POST
-}
-
-// Response 200
-{ data: Company }
-```
-
-#### DELETE /api/companies/[id]
-ลบบริษัท (requires: owner) — soft delete
-
-#### POST /api/companies/switch
-สลับบริษัท active
-
-```typescript
-// Request
-{ companyId: string }
-
-// Response 200 + Set-Cookie
-{ ok: true }
-```
-
-#### POST /api/companies/[id]/invite
-เชิญสมาชิก (requires: admin+)
-
-```typescript
-// Request
-{
-  email: string;
-  role: "admin" | "member" | "viewer";
-}
-
-// Response 200
-{ ok: true }
-```
-
-#### GET /api/companies/[id]/members
-รายชื่อสมาชิกในบริษัท
-
-```typescript
-// Response 200
-{
-  data: [
-    {
-      user: { id, name, email, image },
-      role: "owner",
-      joinedAt: "2024-01-01T00:00:00Z"
-    }
-  ]
+  name: string
+  emoji: string
+  provider: "anthropic" | "openai" | "gemini" | "ollama" | "openrouter" | "custom"
+  apiKey: string
+  baseUrl?: string
+  model: string
+  soul: string
+  role: string
+  useWebSearch?: boolean
+  seniority?: number
+  mcpEndpoint?: string
+  mcpAccessMode?: string
+  trustedUrls?: string[]
+  templateId?: string
 }
 ```
 
----
+### Agent Knowledge
 
-### Agent Endpoints
+| Method | Route | Permission | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/agents/[id]/knowledge` | `agent:read` | List parsed knowledge files for an agent |
+| `POST` | `/api/agents/[id]/knowledge/upload` | `agent:update` | Upload and parse PDF, Excel, Word, CSV, JSON, TXT, or Markdown |
+| `DELETE` | `/api/agents/[id]/knowledge/[knowledgeId]` | `agent:update` | Delete a knowledge item |
 
-#### GET /api/agents
-รายชื่อ agents ทั้งหมด (scoped by company)
+Uploads are parsed by [lib/documents/parser.ts](/Users/nontawatwongnuk/dev_bos/ledgioai/lib/documents/parser.ts). Max file size is currently 10 MB.
 
-```typescript
-// Response 200
+### Teams
+
+| Method | Route | Permission | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/teams` | currently `agent:read` | List teams with populated agents |
+| `POST` | `/api/teams` | currently `agent:create` | Create a team and assign agents |
+| `GET` | `/api/teams/[id]` | `team:read` intent | Get team details |
+| `PUT` | `/api/teams/[id]` | `team:update` intent | Update team and assignment |
+| `DELETE` | `/api/teams/[id]` | `team:delete` intent | Soft-delete team |
+
+Create team request:
+
+```ts
 {
-  data: [
-    {
-      id: "uuid",
-      name: "ผู้สอบบัญชี CPA",
-      emoji: "👨‍⚖️",
-      provider: "anthropic",
-      hasApiKey: true,          // never expose actual key
-      baseUrl: null,
-      model: "claude-sonnet-4-20250514",
-      soul: "คุณเป็น...",
-      role: "ผู้สอบบัญชี",
-      isActive: true,
-      useWebSearch: true,
-      seniority: 10,
-      mcpEndpoint: "https://...",
-      mcpAccessMode: "admin",
-      trustedUrls: ["rd.go.th"],
-      createdAt: "...",
-      updatedAt: "..."
-    }
-  ]
+  name: string
+  emoji: string
+  description?: string
+  agentIds: string[]
 }
 ```
 
-#### POST /api/agents
-สร้าง agent ใหม่ (requires: admin+)
+### Meetings
 
-```typescript
-// Request
+| Method | Route | Permission | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/meetings` | `meeting:read` | Meeting history with stats |
+| `POST` | `/api/meetings/stream` | `meeting:start` | Start a meeting and stream SSE events |
+| `GET` | `/api/meetings/[id]` | `meeting:read` | Meeting detail and transcript |
+| `DELETE` | `/api/meetings/[id]` | `meeting:read` intent | Delete/hide meeting depending on query implementation |
+| `POST` | `/api/meetings/[id]/rate` | `meeting:read` | Save rating/comment |
+| `GET` | `/api/meetings/[id]/report` | `meeting:read` | Generate printable/downloadable report |
+| `POST` | `/api/meetings/[id]/share` | `meeting:read` | Create share token |
+| `PUT` | `/api/meetings/[id]/tags` | `meeting:read` | Update tags |
+
+`/api/meetings/stream` accepts JSON or `multipart/form-data`.
+
+JSON request:
+
+```ts
 {
-  name: string;
-  emoji: string;
-  provider: "anthropic" | "openai" | "gemini" | "ollama" | "openrouter" | "custom";
-  apiKey: string;        // will be encrypted before storage
-  baseUrl?: string;
-  model: string;
-  soul: string;          // system prompt
-  role: string;
-  useWebSearch?: boolean;
-  seniority?: number;    // 1-99, lower = higher seniority
-  mcpEndpoint?: string;
-  mcpAccessMode?: string;
-  trustedUrls?: string[];
-}
-
-// Response 201
-{ data: AgentPublic }
-```
-
-#### PUT /api/agents/[id]
-แก้ไข agent (requires: admin+)
-
-#### DELETE /api/agents/[id]
-ลบ agent — soft delete (requires: admin+)
-
----
-
-### Agent Knowledge Endpoints
-
-#### GET /api/agents/[id]/knowledge
-รายการเอกสาร knowledge ของ agent
-
-```typescript
-// Response 200
-{
-  data: [
-    {
-      id: "uuid",
-      filename: "revenue-code-2024.pdf",
-      meta: "PDF: 45 pages",
-      tokens: 12500,
-      uploadedAt: "...",
-      preview: "ประมวลรัษฎากร แก้ไขเพิ่มเติม..."  // first 200 chars
-    }
-  ]
+  question: string
+  mode: "quick_ask" | "consult" | "full_board"
+  agentIds: string[]
+  teamId?: string
+  clarificationAnswers?: Array<{ question: string; answer: string }>
 }
 ```
 
-#### POST /api/agents/[id]/knowledge/upload
-Upload เอกสาร knowledge ใหม่
+Multipart fields:
 
-```typescript
-// Request: multipart/form-data
-// Field: file (max 10MB)
-// Supported: .pdf, .xlsx, .xls, .docx, .csv, .json, .txt, .md
-
-// Response 201
-{ data: KnowledgePublic }
+```txt
+question: string
+mode: quick_ask | consult | full_board
+agentIds: JSON string array
+teamId?: string
+clarificationAnswers?: JSON string array
+files?: File[]
 ```
 
-#### DELETE /api/agents/[id]/knowledge/[knowledgeId]
-ลบเอกสาร knowledge
+SSE event types currently used by the UI:
 
----
+| Event | Purpose |
+| --- | --- |
+| `session` | Sends `meetingId` and `mode` |
+| `status` | Human-readable progress text |
+| `phase` | Full Board phase changes |
+| `agent_start` | Agent begins work |
+| `chunk` | Streaming token chunk |
+| `message` | Complete message for a phase |
+| `agent_done` | Agent completed |
+| `clarification` | Full Board needs user answers |
+| `memory_update` | Extracted memory facts |
+| `done` | Meeting completed |
+| `error` | Meeting-level error |
 
-### Team Endpoints
+Timeout guards:
 
-#### GET /api/teams
-รายชื่อ teams (scoped by company)
+| Mode | Timeout |
+| --- | --- |
+| `quick_ask` | 30 seconds |
+| `consult` | 90 seconds |
+| `full_board` | 300 seconds |
 
-```typescript
-// Response 200
+### Memory
+
+| Method | Route | Permission | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/memory` | `memory:read` | List memory facts |
+| `POST` | `/api/memory` | `memory:update` | Create/update memory fact |
+| `PUT` | `/api/memory/[id]` | `memory:update` | Update memory fact |
+| `DELETE` | `/api/memory/[id]` | `memory:delete` | Delete memory fact |
+
+### Templates
+
+| Method | Route | Permission | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/agent-templates` | session/agent read intent | List built-in and workspace templates |
+| `GET/POST` | `/api/meeting-templates` | meeting/template intent | List or create meeting prompt templates |
+
+Production currently has 8 built-in agent templates and 0 meeting templates.
+
+### Stats, Audit, Compliance
+
+| Method | Route | Permission | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/stats` | `meeting:read` or stats intent | Basic usage stats |
+| `GET` | `/api/stats/insights` | `meeting:read` | Insights dashboard data and cost KPIs |
+| `GET` | `/api/audit` | admin/member read intent | Audit logs |
+| `GET` | `/api/compliance/export` | authenticated | PDPA-style workspace/user data export |
+
+### Notifications and Scheduling
+
+| Method | Route | Description |
+| --- | --- | --- |
+| `POST` | `/api/notify/line` | Send LINE Notify-style notification |
+| `POST` | `/api/notify/webhook` | Outbound webhook notification |
+| `GET/POST` | `/api/scheduled-meetings` | Scheduled meeting CRUD foundation |
+
+### Health
+
+| Method | Route | Description |
+| --- | --- | --- |
+| `GET` | `/api/health` | Checks database and Redis |
+
+Production health sample:
+
+```json
 {
-  data: [
-    {
-      id: "uuid",
-      name: "ทีมที่ปรึกษาหลัก",
-      emoji: "🏛️",
-      description: "ทีม AI 5 คน...",
-      agents: [AgentPublic, ...], // populated
-      createdAt: "...",
-      updatedAt: "..."
-    }
-  ]
-}
-```
-
-#### POST /api/teams
-สร้าง team (requires: member+)
-
-```typescript
-// Request
-{
-  name: string;
-  emoji: string;
-  description?: string;
-  agentIds: string[];    // agent UUIDs
-}
-
-// Response 201
-{ data: Team }
-```
-
-#### PUT /api/teams/[id]
-แก้ไข team
-
-#### DELETE /api/teams/[id]
-ลบ team
-
----
-
-### Meeting / Research Endpoints
-
-#### POST /api/meetings/stream
-เริ่ม meeting (SSE streaming)
-
-```typescript
-// Request
-{
-  question: string;                    // คำถามหลัก
-  agentIds: string[];                  // agent ที่เข้าร่วม
-  mode: "full" | "discuss" | "close" | "qa";
-  sessionId?: string;                  // สำหรับ multi-round meeting
-  clarificationAnswers?: Array<{
-    question: string;
-    answer: string;
-  }>;
-  fileContexts?: Array<{              // เอกสารที่แนบ
-    filename: string;
-    meta: string;
-    context: string;
-    sheets?: string[];
-  }>;
-  conversationHistory?: Array<{        // ประวัติวาระก่อนหน้า
-    question: string;
-    answer: string;
-  }>;
-  historyMode?: "full" | "summary" | "last3" | "none";
-  disableMcp?: boolean;
-}
-
-// Response: text/event-stream (SSE)
-// Events: session, chairman, status, agent_start, message, agent_done,
-//         web_source, clarification, memory_update, error, done
-```
-
-#### GET /api/meetings
-รายการ research sessions (scoped by company)
-
-```typescript
-// Query params
-?page=1&pageSize=20&status=completed&search=ภาษี
-
-// Response 200
-{
-  data: [ResearchSession],
-  total: 150,
-  page: 1,
-  pageSize: 20
-}
-```
-
-#### GET /api/meetings/[id]
-รายละเอียด session + messages
-
-```typescript
-// Response 200
-{
-  data: {
-    ...ResearchSession,
-    messages: [ResearchMessage]
+  "status": "healthy",
+  "version": "1.0.0",
+  "checks": {
+    "database": "ok",
+    "redis": "ok"
   }
 }
 ```
 
----
+## Implementation Notes
 
-### Document Upload
-
-#### POST /api/documents/upload
-Upload เอกสารสำหรับ meeting context
-
-```typescript
-// Request: multipart/form-data
-// Field: file (max 10MB)
-
-// Response 200
-{
-  data: {
-    filename: "งบการเงิน-2024.xlsx",
-    meta: "Excel file: 3 sheets...",
-    context: "--- Sheet: Balance Sheet ---\n...",
-    tokens: 5000
-  }
-}
-```
-
----
-
-### Memory Endpoints
-
-#### GET /api/memory
-รายการ memory facts (scoped by company)
-
-```typescript
-// Response 200
-{
-  data: [
-    {
-      id: "uuid",
-      key: "vat_status",
-      value: "จดทะเบียน VAT",
-      source: "session-uuid",
-      createdAt: "...",
-      updatedAt: "..."
-    }
-  ]
-}
-```
-
-#### PUT /api/memory
-Upsert memory fact
-
-```typescript
-// Request
-{
-  key: string;
-  value: string;
-  source?: string;
-}
-
-// Response 200
-{ data: MemoryFact }
-```
-
-#### DELETE /api/memory/[id]
-ลบ memory fact
-
----
-
-### Statistics Endpoints
-
-#### GET /api/stats
-Agent statistics (scoped by company)
-
-```typescript
-// Query params
-?period=30d  // 7d, 30d, 90d
-
-// Response 200
-{
-  data: {
-    summary: {
-      totalSessions: 150,
-      totalInputTokens: 500000,
-      totalOutputTokens: 200000,
-      activeAgents: 5
-    },
-    agents: [
-      {
-        agentId: "uuid",
-        agentName: "ผู้สอบบัญชี CPA",
-        agentEmoji: "👨‍⚖️",
-        totalSessions: 50,
-        totalInputTokens: 100000,
-        totalOutputTokens: 40000,
-        lastUsed: "2024-01-15",
-        daily: [
-          { date: "2024-01-15", sessions: 3, inputTokens: 5000, outputTokens: 2000 }
-        ]
-      }
-    ]
-  }
-}
-```
-
----
-
-### Settings Endpoints
-
-#### GET /api/settings
-Company settings (requires: admin+)
-
-```typescript
-// Response 200
-{
-  data: {
-    hasSerperKey: true,      // never expose actual key
-    hasSerpApiKey: false,
-    hasSupermemoryKey: false,
-    defaultProvider: "anthropic",
-    defaultModel: "claude-sonnet-4-20250514",
-    maxTokensPerSession: 50000,
-    maxSessionsPerDay: 100
-  }
-}
-```
-
-#### PUT /api/settings
-Update settings (requires: admin+)
-
-```typescript
-// Request
-{
-  serperApiKey?: string;         // encrypted before storage
-  serpApiKey?: string;
-  supermemoryApiKey?: string;
-  defaultProvider?: string;
-  defaultModel?: string;
-  maxTokensPerSession?: number;
-  maxSessionsPerDay?: number;
-}
-
-// Response 200
-{ data: Settings }
-```
-
----
-
-### Health Endpoint
-
-#### GET /api/health
-Health check (public, no auth)
-
-```typescript
-// Response 200
-{
-  status: "ok",
-  version: "1.0.0",
-  uptime: 86400,
-  database: "connected",
-  redis: "connected"
-}
-```
-
----
-
-## 🔄 SSE Event Schema
-
-```typescript
-// SSE events for /api/meetings/stream
-
-interface SSEEvent {
-  event: string;
-  data: unknown;
-}
-
-// All events
-type SSEEvents = 
-  | { event: "session"; data: { sessionId: string } }
-  | { event: "chairman"; data: { agentId: string; name: string; emoji: string; role: string } }
-  | { event: "status"; data: { message: string } }
-  | { event: "agent_start"; data: { agentId: string; name: string; emoji: string; role: string; isChairman: boolean } }
-  | { event: "message"; data: { id: string; agentId: string; agentName: string; agentEmoji: string; role: string; content: string; tokensUsed: number; timestamp: string } }
-  | { event: "agent_done"; data: { agentId: string } }
-  | { event: "web_source"; data: { agentId: string; sources: Array<{ title: string; url: string; domain: string; snippet: string }> } }
-  | { event: "clarification"; data: { questions: string[] } }
-  | { event: "memory_update"; data: { facts: Array<{ key: string; value: string }> } }
-  | { event: "error"; data: { message: string } }
-  | { event: "done"; data: { sessionId: string } };
-```
-
-## 📌 Validation with Zod
-
-ทุก endpoint ใช้ Zod schema สำหรับ input validation:
-
-```typescript
-// lib/validations/agent.ts
-import { z } from "zod";
-
-export const createAgentSchema = z.object({
-  name: z.string().min(1).max(255),
-  emoji: z.string().min(1).max(10),
-  provider: z.enum(["anthropic", "openai", "gemini", "ollama", "openrouter", "custom"]),
-  apiKey: z.string().min(1).max(500),
-  baseUrl: z.string().url().max(512).optional(),
-  model: z.string().min(1).max(255),
-  soul: z.string().min(1).max(10000),
-  role: z.string().min(1).max(255),
-  useWebSearch: z.boolean().optional().default(false),
-  seniority: z.number().int().min(1).max(99).optional(),
-  mcpEndpoint: z.string().url().max(512).optional(),
-  mcpAccessMode: z.string().max(50).optional(),
-  trustedUrls: z.array(z.string().max(255)).max(20).optional(),
-});
-```
-
-## 🚦 Rate Limiting
-
-| Endpoint | Limit | Window |
-|----------|-------|--------|
-| POST /api/auth/register | 5 | 1 hour |
-| POST /api/auth/[...nextauth] (login) | 10 | 5 min |
-| POST /api/meetings/stream | 10 | 1 min |
-| POST /api/documents/upload | 20 | 1 min |
-| All other POST/PUT/DELETE | 60 | 1 min |
-| All GET | 120 | 1 min |
-
-Rate limiting uses Redis (per user ID + per IP).
+- API routes should use query helpers under [lib/db/queries](/Users/nontawatwongnuk/dev_bos/ledgioai/lib/db/queries), not ad hoc SQL in route handlers.
+- Every business query must include `workspaceId`.
+- Soft delete is preferred for business records that have `deletedAt`.
+- Mutation routes generally call `rateLimitByUser()`.
+- Important mutations call `logAudit()`.
+- Do not expose encrypted secrets in JSON responses.

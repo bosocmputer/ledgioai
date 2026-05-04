@@ -4,6 +4,8 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { authClient } from "@/lib/auth/client"
+import { Button } from "@/components/ui/button"
+import { Field, inputClasses } from "@/components/ui/form-section"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -59,7 +61,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-8 shadow-sm">
+    <div className="rounded-lg border border-gray-200 bg-white p-8 shadow-sm dark:border-gray-700 dark:bg-gray-900">
       <h2 className="mb-6 text-center text-xl font-semibold text-gray-900 dark:text-gray-100">
         สมัครสมาชิก
       </h2>
@@ -71,73 +73,61 @@ export default function RegisterPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="name" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            ชื่อ
-          </label>
+        <Field label="ชื่อ">
           <input
             id="name"
             type="text"
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={inputClasses}
             placeholder="ชื่อของคุณ"
           />
-        </div>
+        </Field>
 
-        <div>
-          <label htmlFor="email" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            อีเมล
-          </label>
+        <Field label="อีเมล">
           <input
             id="email"
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={inputClasses}
             placeholder="you@example.com"
           />
-        </div>
+        </Field>
 
-        <div>
-          <label htmlFor="password" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            รหัสผ่าน
-          </label>
+        <Field label="รหัสผ่าน">
           <input
             id="password"
             type="password"
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={inputClasses}
             placeholder="อย่างน้อย 8 ตัวอักษร"
           />
-        </div>
+        </Field>
 
-        <div>
-          <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-300">
-            ยืนยันรหัสผ่าน
-          </label>
+        <Field label="ยืนยันรหัสผ่าน">
           <input
             id="confirmPassword"
             type="password"
             required
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className={inputClasses}
             placeholder="••••••••"
           />
-        </div>
+        </Field>
 
-        <button
+        <Button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          className="w-full"
         >
           {loading ? "กำลังสมัครสมาชิก..." : "สมัครสมาชิก"}
-        </button>
+        </Button>
       </form>
 
       <p className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">

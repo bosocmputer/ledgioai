@@ -7,6 +7,11 @@ import {
   Zap, Clock, TrendingUp, ArrowRight,
 } from "lucide-react"
 import { useWorkspace } from "@/components/providers/workspace-provider"
+import { PageInfo } from "@/components/ui/page-info"
+import { ButtonLink } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
+import { MetricCard } from "@/components/ui/metric-card"
+import { PageHeader } from "@/components/ui/page-header"
 
 interface Overview {
   agents: number
@@ -76,20 +81,24 @@ export default function DashboardPage() {
 
   const statCards = overview
     ? [
-        { label: "Agents", value: overview.agents, icon: Bot, color: "bg-blue-50 dark:bg-blue-950 text-blue-600", href: "/agents" },
+        { label: "ผู้เชี่ยวชาญ", value: overview.agents, icon: Bot, color: "bg-blue-50 dark:bg-blue-950 text-blue-600", href: "/agents" },
         { label: "ทีม", value: overview.teams, icon: Users, color: "bg-green-50 dark:bg-green-950 text-green-600", href: "/teams" },
         { label: "ประชุม", value: overview.meetings, icon: MessageSquare, color: "bg-purple-50 dark:bg-purple-950 text-purple-600", href: "/history" },
-        { label: "Memory", value: overview.memoryFacts, icon: Brain, color: "bg-amber-50 dark:bg-amber-950 text-amber-600", href: "/memory" },
+        { label: "ความจำ", value: overview.memoryFacts, icon: Brain, color: "bg-amber-50 dark:bg-amber-950 text-amber-600", href: "/memory" },
       ]
     : []
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">แดชบอร์ด</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">ภาพรวมทีมผู้เชี่ยวชาญ AI ของคุณ</p>
-      </div>
+      <PageHeader
+        title="แดชบอร์ด"
+        description="ภาพรวมเวิร์กสเปซ ทีมผู้เชี่ยวชาญ และการใช้งานล่าสุด"
+        actions={<ButtonLink href="/meeting"><Zap className="h-4 w-4" /> เริ่มประชุม</ButtonLink>}
+      />
+
+      <PageInfo id="dashboard">
+        เริ่มด้วยการ <strong>สร้างผู้เชี่ยวชาญ</strong> ก่อน — กำหนดบุคลิกและความเชี่ยวชาญของแต่ละคน จากนั้น <strong>จัดทีม</strong> รวมผู้เชี่ยวชาญที่ต้องใช้งานร่วมกัน แล้วเข้า <strong>ห้องประชุม</strong> เพื่อถามคำถาม ระบบจะให้แต่ละคนวิเคราะห์และถกเถียงกันก่อนสรุปคำตอบ
+      </PageInfo>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -108,19 +117,14 @@ export default function DashboardPage() {
           : statCards.map((stat) => {
               const Icon = stat.icon
               return (
-                <Link
+                <MetricCard
                   key={stat.label}
                   href={stat.href}
-                  className="flex items-center gap-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 hover:border-gray-300 dark:border-gray-600 hover:shadow-sm transition-all"
-                >
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-lg ${stat.color}`}>
-                    <Icon className="h-6 w-6" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stat.value}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{stat.label}</p>
-                  </div>
-                </Link>
+                  label={stat.label}
+                  value={stat.value}
+                  icon={<Icon className="h-5 w-5" />}
+                  toneClassName={stat.color}
+                />
               )
             })}
       </div>
@@ -163,11 +167,13 @@ export default function DashboardPage() {
             </div>
           ) : recentMeetings.length === 0 ? (
             <div className="text-center py-8">
-              <Clock className="w-10 h-10 mx-auto text-gray-300 mb-2" />
-              <p className="text-sm text-gray-400">ยังไม่มีประวัติการประชุม</p>
-              <Link href="/meeting" className="text-sm text-blue-600 hover:underline mt-1 inline-block">
-                เริ่มประชุมแรก →
-              </Link>
+              <EmptyState
+                icon={<Clock className="h-10 w-10" />}
+                title="ยังไม่มีประวัติการประชุม"
+                description="เริ่มประชุมแรกเพื่อดูสรุปและ transcript ได้ที่นี่"
+                action={<ButtonLink href="/meeting" size="sm">เริ่มประชุมแรก</ButtonLink>}
+                className="border-0 bg-transparent py-4 dark:bg-transparent"
+              />
             </div>
           ) : (
             <div className="space-y-3">
@@ -216,7 +222,7 @@ export default function DashboardPage() {
               >
                 <Bot className="w-5 h-5 text-blue-600" />
                 <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">สร้าง Agent ใหม่</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">สร้างผู้เชี่ยวชาญใหม่</p>
                   <p className="text-xs text-gray-400">เพิ่มผู้เชี่ยวชาญ AI ในทีม</p>
                 </div>
               </Link>
@@ -227,7 +233,7 @@ export default function DashboardPage() {
                 <Users className="w-5 h-5 text-green-600" />
                 <div>
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-300">สร้างทีมใหม่</p>
-                  <p className="text-xs text-gray-400">จัดกลุ่ม agents เป็นทีมที่ปรึกษา</p>
+                  <p className="text-xs text-gray-400">จัดกลุ่มผู้เชี่ยวชาญเป็นทีมที่ปรึกษา</p>
                 </div>
               </Link>
             </div>

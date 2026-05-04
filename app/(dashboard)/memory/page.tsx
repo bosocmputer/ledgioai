@@ -5,7 +5,6 @@ import { useWorkspace } from "@/components/providers/workspace-provider"
 import {
   Brain,
   Plus,
-  Search,
   Trash2,
   Edit3,
   X,
@@ -13,6 +12,11 @@ import {
   Filter,
   AlertTriangle,
 } from "lucide-react"
+import { PageInfo } from "@/components/ui/page-info"
+import { Button } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
+import { PageHeader } from "@/components/ui/page-header"
+import { SearchInput } from "@/components/ui/search-input"
 
 // ── Types ──────────────────────────────────────────────
 
@@ -147,49 +151,45 @@ export default function MemoryPage() {
 
   // ── Render ─────────────────────────────────────────
   return (
-    <div className="p-6 max-w-5xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Brain className="w-6 h-6" /> Memory
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            ข้อเท็จจริงที่ AI จดจำเกี่ยวกับ workspace ของคุณ ({total} รายการ)
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="space-y-6">
+      <PageHeader
+        title="ความจำ"
+        icon={<Brain className="h-6 w-6" />}
+        description={`ข้อเท็จจริงที่ AI จดจำเกี่ยวกับเวิร์กสเปซนี้ (${total} รายการ)`}
+        actions={
+          <>
           {facts.length > 0 && (
-            <button
+            <Button
               onClick={() => setShowDeleteAll(true)}
-              className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 dark:bg-red-950 rounded-lg"
+              variant="ghost"
             >
               <Trash2 className="w-4 h-4 inline mr-1" />
               ล้างทั้งหมด
-            </button>
+            </Button>
           )}
-          <button
+          <Button
             onClick={() => setShowCreate(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 flex items-center gap-2"
           >
             <Plus className="w-4 h-4" /> เพิ่มข้อเท็จจริง
-          </button>
-        </div>
-      </div>
+          </Button>
+          </>
+        }
+      />
+
+      <PageInfo id="memory">
+        Memory เก็บข้อมูลที่ agent ควรรู้เกี่ยวกับบริษัทของคุณอยู่เสมอ เช่น "จดทะเบียน VAT แล้ว", "งวดบัญชีสิ้นสุด ธ.ค.", "ใช้มาตรฐาน NPAEs" — ทุกครั้งที่ประชุม ข้อมูลเหล่านี้จะถูกส่งให้ agent อ่านอัตโนมัติ ไม่ต้องอธิบายซ้ำทุกครั้ง ระบบดึง memory มาจากการประชุม Full Board โดยอัตโนมัติ หรือจะเพิ่มเองก็ได้
+      </PageInfo>
 
       {/* Filters */}
-      <div className="flex items-center gap-3 mb-4">
+      <div className="flex items-center gap-3">
         {/* Search */}
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            value={searchDebounce}
-            onChange={(e) => setSearchDebounce(e.target.value)}
-            placeholder="ค้นหา..."
-            className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+        <SearchInput
+          className="max-w-sm"
+          value={searchDebounce}
+          onChange={(e) => setSearchDebounce(e.target.value)}
+          onClear={() => setSearchDebounce("")}
+          placeholder="ค้นหาความจำ..."
+        />
 
         {/* Category filter */}
         <div className="flex items-center gap-1">
@@ -237,19 +237,12 @@ export default function MemoryPage() {
           ))}
         </div>
       ) : facts.length === 0 ? (
-        <div className="text-center py-16">
-          <Brain className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">ยังไม่มีข้อมูลที่จดจำ</p>
-          <p className="text-gray-400 text-sm mt-1">
-            AI จะเรียนรู้จากการประชุม หรือคุณสามารถเพิ่มเองได้
-          </p>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700"
-          >
-            <Plus className="w-4 h-4 inline mr-1" /> เพิ่มข้อเท็จจริงแรก
-          </button>
-        </div>
+        <EmptyState
+          icon={<Brain className="h-16 w-16" />}
+          title="ยังไม่มีข้อมูลที่จดจำ"
+          description="AI จะเรียนรู้จากการประชุม หรือคุณสามารถเพิ่มข้อเท็จจริงที่ยืนยันแล้วเองได้"
+          action={<Button onClick={() => setShowCreate(true)}><Plus className="h-4 w-4" /> เพิ่มข้อเท็จจริงแรก</Button>}
+        />
       ) : (
         <div className="space-y-2">
           {facts.map((fact) => {

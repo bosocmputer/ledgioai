@@ -2,8 +2,13 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Users, Plus, Search, Trash2, Pencil, Bot } from "lucide-react"
+import { Users, Plus, Trash2, Pencil, Bot } from "lucide-react"
 import { useWorkspace } from "@/components/providers/workspace-provider"
+import { PageInfo } from "@/components/ui/page-info"
+import { ButtonLink } from "@/components/ui/button"
+import { EmptyState } from "@/components/ui/empty-state"
+import { PageHeader } from "@/components/ui/page-header"
+import { SearchInput } from "@/components/ui/search-input"
 
 interface Agent {
   id: string
@@ -59,34 +64,27 @@ export default function TeamsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">ทีม</h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            จัดกลุ่มผู้เชี่ยวชาญ AI เป็นทีม ({teams.length} ทีม)
-          </p>
-        </div>
-        <Link
-          href="/teams/new"
-          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          สร้างทีม
-        </Link>
-      </div>
+      <PageHeader
+        title="ทีม"
+        description={`จัดกลุ่มผู้เชี่ยวชาญ AI เป็นทีมที่เรียกใช้ซ้ำได้ (${teams.length} ทีม)`}
+        actions={
+          <ButtonLink href="/teams/new">
+            <Plus className="h-4 w-4" />
+            สร้างทีม
+          </ButtonLink>
+        }
+      />
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <input
-          type="text"
-          placeholder="ค้นหาทีม..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-gray-200 dark:border-gray-700 py-2 pl-10 pr-4 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-        />
-      </div>
+      <PageInfo id="teams">
+        ทีมคือการรวม agents หลายคนไว้ด้วยกันสำหรับงานประเภทเดียวกัน เช่น <strong>"คณะที่ปรึกษาภาษี"</strong> อาจมีนักบัญชี + ที่ปรึกษา VAT + ผู้ตรวจสอบบัญชี เมื่อเข้าห้องประชุมแล้วเลือกทีม ไม่ต้องเลือก agent ทีละคนทุกครั้ง — ประหยัดเวลาเมื่อใช้งานประจำ
+      </PageInfo>
+
+      <SearchInput
+        placeholder="ค้นหาชื่อหรือคำอธิบายทีม..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        onClear={() => setSearch("")}
+      />
 
       {/* Team Cards */}
       {loading ? (
@@ -108,26 +106,19 @@ export default function TeamsPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 dark:border-gray-600 py-12 text-center">
-          <Users className="mx-auto h-12 w-12 text-gray-300" />
-          <h3 className="mt-3 text-sm font-medium text-gray-900 dark:text-gray-100">
-            {teams.length === 0 ? "ยังไม่มีทีม" : "ไม่พบผลลัพธ์"}
-          </h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {teams.length === 0
-              ? "สร้างทีมแรกเพื่อรวม agents เข้าด้วยกัน"
-              : "ลองค้นหาด้วยคำอื่น"}
-          </p>
-          {teams.length === 0 && (
-            <Link
-              href="/teams/new"
-              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-            >
-              <Plus className="h-4 w-4" />
-              สร้างทีม
-            </Link>
-          )}
-        </div>
+        <EmptyState
+          icon={<Users className="h-12 w-12" />}
+          title={teams.length === 0 ? "ยังไม่มีทีม" : "ไม่พบผลลัพธ์"}
+          description={teams.length === 0 ? "สร้างทีมแรกเพื่อเรียกผู้เชี่ยวชาญหลายคนเข้าประชุมได้เร็วขึ้น" : "ลองค้นหาด้วยชื่อหรือคำอธิบายอื่น"}
+          action={
+            teams.length === 0 ? (
+              <ButtonLink href="/teams/new">
+                <Plus className="h-4 w-4" />
+                สร้างทีม
+              </ButtonLink>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((team) => (
@@ -136,16 +127,16 @@ export default function TeamsPage() {
               className="group relative rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-5 transition-shadow hover:shadow-md"
             >
               {/* Actions */}
-              <div className="absolute right-3 top-3 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+              <div className="absolute right-3 top-3 flex gap-1 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
                 <Link
                   href={`/teams/${team.id}`}
-                  className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 dark:bg-gray-800 hover:text-gray-600 dark:text-gray-400"
+                  className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:text-gray-400 dark:hover:bg-gray-800"
                 >
                   <Pencil className="h-4 w-4" />
                 </Link>
                 <button
                   onClick={() => handleDelete(team.id)}
-                  className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 dark:bg-red-950 hover:text-red-600"
+                  className="rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
